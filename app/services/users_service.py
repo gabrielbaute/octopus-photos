@@ -5,7 +5,6 @@ import logging
 from uuid import UUID
 from typing import Optional
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
 
 from app.enums import UserRole
 from app.controllers import UserController
@@ -13,6 +12,7 @@ from app.services.mail_service import MailService
 from app.services.storage_service import StorageService
 from app.services.security_service import SecurityService
 from app.schemas import UserCreate, UserResponse, UserUpdate, UserLogin, UserListResponse
+from app.errors import ValidationError, ResourceNotFoundError, StorageError, PermissionDeniedError
 
 class UserService:
     """
@@ -76,22 +76,21 @@ class UserService:
             # 2. Persistencia: Crear usuario en DB
             new_user_db = self.user_controller.create(user_data, hashed_password)
             if not new_user_db:
-                return None
+                raise ValidationError(f"Fallo crítico: No se pudo crear el usuario {user_data.username} en la DB.")
 
             # 3. Infraestructura: Inicializar Storage (Físico + DB)
             storage_init = self.storage_service.init_user_storage(new_user_db.id)
             
             if not storage_init:
                 self.logger.error(f"Fallo crítico: No se pudo crear el storage para {new_user_db.id}")
-                # Podríamos implementar un rollback aquí si fuera necesario
-                return None
+                raise StorageError(f"Fallo crítico: No se pudo crear el storage para {new_user_db.id}")
 
             self.logger.info(f"Usuario {new_user_db.username} registrado exitosamente con ID {new_user_db.id}")
             return new_user_db
 
         except Exception as e:
             self.logger.error(f"Error en el proceso de registro: {e}")
-            return None
+            raise ValidationError(f"Error en el proceso de registro: {e}")
     
     def authenticate_user(self, login_credentials: UserLogin) -> Optional[UserResponse]:
         """
@@ -105,7 +104,10 @@ class UserService:
         """
         user = self.user_controller.get_by_email(login_credentials.email)
         if not user:
-            return None
+            raise ResourceNotFoundError(f"User with email {login_credentials.email} not found.")
+        
+        if not user.is_active:
+            raise PermissionDeniedError(f"User with email {login_credentials.email} is not active.")
         
         user_credentials = self.user_controller.get_user_hash(user.id)
         if not user_credentials:
@@ -172,7 +174,7 @@ class UserService:
         """
         user = self.user_controller.get_by_id(user_id)
         if not user:
-            return None
+            raise ResourceNotFoundError(f"User with ID {user_id} not found.")
         return user
     
     def list_all_users(self) -> UserListResponse:
@@ -210,15 +212,15 @@ class UserService:
         """
         updated_user = self.user_controller.update_user(user_id, update_data)
         if not updated_user:
-            return None
+            raise ValidationError(f"No se pudo actualizar el usuario {user_id}")
         return updated_user
     
-    def deactivate_user(self, user_id: str) -> UserResponse:
+    def deactivate_user(self, user_id: UUID) -> UserResponse:
         """
         Desactiva un usuario.
 
         Args:
-            user_id (str): ID del usuario.
+            user_id (UUID): ID del usuario.
 
         Returns:
             UserResponse: Datos del usuario desactivado.
@@ -226,18 +228,18 @@ class UserService:
         user_update = UserUpdate(is_active=False)
         updated_user = self.user_controller.update_user(user_id, user_update)
         if not updated_user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with ID {user_id} not found."
+            raise ResourceNotFoundError(
+                message=f"Usuario no encontrado",
+                details={"user_id": str(user_id)}
             )
         return updated_user
 
-    def activate_user(self, user_id: str) -> UserResponse:
+    def activate_user(self, user_id: UUID) -> UserResponse:
         """
         Activa un usuario.
         
         Args:
-            user_id (str): ID del usuario.
+            user_id (UUID): ID del usuario.
         
         Returns:
             UserResponse: Datos del usuario activado.
@@ -245,32 +247,33 @@ class UserService:
         user_update = UserUpdate(is_active=True)
         updated_user = self.user_controller.update_user(user_id, user_update)
         if not updated_user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with ID {user_id} not found."
+            raise ResourceNotFoundError(
+                message=f"Usuario no encontrado",
+                details={"user_id": str(user_id)}
             )
         return updated_user
     
     def delete_user(self, user_id: UUID, requester_user_id: UUID) -> None:
         """
-        Elimina un usuario.
+        Elimina un usuario de forma definitiva.
 
         Args:
-            user_id (str): ID del usuario.
-            requester_user_id (str): ID del usuario que realiza la acción.
+            user_id (UUID): ID del usuario a eliminar.
+            requester_user_id (UUID): ID de quien ejecuta la acción.
 
         Raises:
-            HTTPException: Si el usuario no es un administrador.
+            PermissionDeniedError: Si el ejecutor no tiene privilegios de ADMIN.
+            ResourceNotFoundError: Si el usuario a eliminar no existe en la base de datos.
         """
         if not self._is_user_admin(requester_user_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admins can delete users."
+            raise PermissionDeniedError(
+                message="Privilegios insuficientes",
+                details={"action": "delete_user", "required_role": "ADMIN"}
             )
 
         success = self.user_controller.delete_user(user_id)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with ID {user_id} not found."
+            raise ResourceNotFoundError(
+                message=f"Usuario no encontrado",
+                details={"user_id": str(user_id)}
             )

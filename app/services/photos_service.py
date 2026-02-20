@@ -6,7 +6,6 @@ from uuid import UUID
 from PIL import Image
 from pathlib import Path
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
 from typing import Optional, BinaryIO, List
 
 from app.services.users_service import UserService
@@ -14,7 +13,7 @@ from app.services.storage_service import StorageService
 from app.services.metadata_service import MetadataService
 from app.controllers.photo_controller import PhotoController
 from app.schemas import PhotoCreate, PhotoResponse, AlbumResponse
-from app.settings import settings
+from app.errors import ValidationError, ResourceNotFoundError, PermissionDeniedError, OctopusError
 
 class PhotosService:
     """
@@ -61,48 +60,67 @@ class PhotosService:
             return False
 
     # =========== METODOS PARA SUBIR/CREAR ===========
-    def upload_photo(self, user_id: UUID, file_stream: BinaryIO, filename: str, description: Optional[str] = None) -> Optional[PhotoResponse]:
+    def upload_photo(self, user_id: UUID, file_stream: BinaryIO, filename: str, description: Optional[str] = None) -> PhotoResponse:
         """
-        Orquesta el flujo completo de subida:
-        1. Guarda el archivo físico (StorageService).
-        2. Genera la miniatura.
-        3. Extrae metadatos EXIF (MetadataService).
-        4. Persiste la información en la base de datos.
+        Sube una foto al servidor desde la API y en stream.
+
+        Args:
+            user_id (UUID): ID del propietario.
+            file_stream (BinaryIO): El objeto de flujo binario del archivo.
+            filename (str): Nombre original del archivo.
+            description (Optional[str]): Descripción opcional.
+
+        Returns:
+            PhotoResponse: El esquema de respuesta.
+        
+        Raises:
+            ValidationError: Si el formato no es soportado.
         """
-        target_path = None
+        target_path = self.storage_service.get_user_path(user_id)
+        
+        # 1. Validar extensión (prevención básica)
+        suffix = Path(filename).suffix.lower()
+        if suffix not in [".jpg", ".jpeg", ".png", ".webp"]:
+            raise ValidationError(
+                message="Formato de imagen no soportado",
+                details={"supported_formats": [".jpg", ".jpeg", ".png", ".webp"]}
+            )
+
         try:
-            # 1. Almacenamiento físico y actualización de cuota
+            # 2. Almacenamiento (el storage_service debería lanzar StorageError si no hay cuota)
             target_path = self.storage_service.save_photo_stream(user_id, file_stream, filename)
-            if not target_path:
-                return None
-
-            # 2. Generar Miniatura
+            
+            # 3. Procesamiento técnico
             self._generate_thumbnail(target_path, user_id)
-
-            # 3. Extracción de Metadatos
             metadata = self.metadata_service.extract_metadata(target_path)
 
-            # 4. Preparar objeto para el controlador
-            # Combinamos la info de archivo con los metadatos extraídos
             photo_data = PhotoCreate(
                 file_name=target_path.name,
                 description=description,
-                storage_path=str(target_path),
-                **metadata.model_dump() # Desempaquetamos los metadatos EXIF
+                **metadata.model_dump()
             )
 
-            # 5. Persistencia en DB
-            new_photo = self.photo_controller.create_photo(user_id=user_id, photo_in=photo_data)
+            # 4. DB
+            new_photo = self.photo_controller.create_photo(
+                user_id=user_id,
+                photo_data=photo_data,
+                storage_path=str(target_path),
+                metadata=metadata
+                )
             
-            self.logger.info(f"Foto {target_path.name} procesada y registrada para el usuario {user_id}")
+            if not new_photo:
+                raise OctopusError("Error inesperado al persistir la foto en base de datos")
+
             return new_photo
 
         except Exception as e:
-            self.logger.error(f"Fallo en el flujo de upload_photo: {e}")
-            # Limpieza en caso de error para mantener consistencia
+            # Rollback físico: si algo falló, borramos el rastro en disco
             if target_path and target_path.exists():
                 self.storage_service.delete_photo_file(user_id, target_path)
-            return None
+            
+            self.logger.error(f"Fallo crítico en upload: {str(e)}")
+            raise OctopusError(f"Fallo crítico en upload: {str(e)}")
+    
 
     def create_album(self, user_id: UUID, album_name: str) -> Optional[AlbumResponse]:
         """
@@ -183,29 +201,29 @@ class PhotosService:
         """
         photo = self.photo_controller.get_by_id(photo_id)
         if not photo:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Photo with ID {photo_id} not found."
+            raise ResourceNotFoundError(
+                message=f"Foto no encontrada.",
+                details={"photo_id": str(photo_id)}
             )
 
         user_photo = self.user_service.get_user_by_id(requester_id)
         if not user_photo:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with ID {requester_id} not found."
+            raise ResourceNotFoundError(
+                message="Usuario solicitante de la acción no encontrado",
+                details={"user_id": str(requester_id)}
             )
         
         if user_photo.id != photo.user_id and not self.user_service._is_user_admin(requester_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"User {requester_id} does not have permission to delete photo {photo_id}."
+            raise PermissionDeniedError(
+                message="Privilegios insuficientes",
+                details={"action": "delete_photo", "required": "Rol de ADMIN o propietario de la foto."}
             )
         
         success = self.photo_controller.delete_photo(photo_id)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Photo with ID {photo_id} not found."
+            raise ResourceNotFoundError(
+                message=f"Foto no encontrada.",
+                details={"photo_id": str(photo_id)}
             )
         return success
     
@@ -222,28 +240,28 @@ class PhotosService:
         """
         album = self.photo_controller.get_album_by_id(album_id)
         if not album:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Album with ID {album_id} not found."
+            raise ResourceNotFoundError(
+                message=f"Album no encontrado.",
+                details={"album_id": str(album_id)}
             )
 
         user_album = self.user_service.get_user_by_id(requester_id)
         if not user_album:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with ID {requester_id} not found."
+            raise ResourceNotFoundError(
+                message=f"Usuario no encontrado.",
+                details={"user_id": str(requester_id)}
             )
         
         if user_album.id != album.user_id and not self.user_service._is_user_admin(requester_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"User {requester_id} does not have permission to delete album {album_id}."
+            raise PermissionDeniedError(
+                message="Privilegios insuficientes",
+                details={"action": "delete_album", "required": "Rol de ADMIN o propietario del álbum."}
             )
         
         success = self.photo_controller.delete_album(album_id)
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Album with ID {album_id} not found."
+            raise ResourceNotFoundError(
+                message=f"Album no encontrado.",
+                details={"album_id": str(album_id)}
             )
         return success

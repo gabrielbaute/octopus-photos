@@ -11,8 +11,9 @@ from typing import Optional, BinaryIO
 
 from app.settings import settings
 from app.enums import FormatImage
-from app.controllers.storage_controller import StorageController
 from app.schemas.storage_schemas import UserStorage
+from app.controllers.storage_controller import StorageController
+from app.errors import ValidationError, ResourceNotFoundError, StorageError, PermissionDeniedError
 
 class StorageService:
     """
@@ -32,8 +33,10 @@ class StorageService:
         try:
             self.base_path.mkdir(parents=True, exist_ok=True)
         except OSError as e:
-            self.logger.critical(f"Error fatal: No se pudo crear STORAGE_BASE_PATH: {e}")
-            raise
+            raise StorageError(
+                message="No se pudo inicializar el almacenamiento base en el servidor.",
+                details={"path": str(self.base_path), "os_error": str(e)}
+            )
     
     def init_user_storage(self, user_id: UUID) -> Optional[UserStorage]:
         """
@@ -48,6 +51,11 @@ class StorageService:
         user_path = self.base_path / str(user_id)
         
         try:
+            # 0. Verificar si ya existe para evitar el UNIQUE constraint error
+            existing = self.get_user_storage(user_id)
+            if existing:
+                return existing
+            
             # 1. Crear directorios físicos (incluyendo subcarpeta para fotos y miniaturas si deseas)
             user_path.mkdir(parents=True, exist_ok=True)
             (user_path / "photos").mkdir(exist_ok=True)
@@ -62,8 +70,10 @@ class StorageService:
             )
             
         except OSError as e:
-            self.logger.error(f"Failed to create physical storage for {user_id}: {e}")
-            return None
+            raise StorageError(
+                message="No se pudo inicializar el almacenamiento físico para el usuario.",
+                details={"user_id": str(user_id), "os_error": str(e)}
+            )
 
     # CONSULTAS
     def get_user_path(self, user_id: UUID, subfolder: str = "photos") -> Path:
@@ -90,6 +100,17 @@ class StorageService:
             Path: Ruta a la subcarpeta de miniaturas.
         """
         return self.base_path / str(user_id) / "thumbnails"
+
+    def get_user_storage(self, user_id: UUID) -> Optional[UserStorage]:
+        """
+        Obtiene información del almacenamiento de un usuario.
+
+        Args:
+            user_id (UUID): ID del usuario.
+        """
+        if isinstance(user_id, str):
+            user_id = UUID(user_id)
+        return self.controller.get_uses_storage(user_id)
 
     # SUBIDA Y ACTUALIZACIÓN
     def prepare_new_photo_path(self, user_id: UUID, original_filename: str) -> Optional[Path]:
@@ -130,7 +151,7 @@ class StorageService:
             files_delta=1
         )
 
-    def save_photo_stream(self, user_id: UUID, file_stream: BinaryIO, original_filename: str) -> Optional[Path]:
+    def save_photo_stream(self, user_id: UUID, file_stream: BinaryIO, original_filename: str) -> Path:
         """
         Guarda una foto desde un stream binario, gestiona el archivo físico y actualiza la DB.
         
@@ -143,42 +164,54 @@ class StorageService:
             original_filename (str): Nombre original para extraer la extensión.
             
         Returns:
-            Optional[Path]: La ruta absoluta del archivo guardado o None si ocurre un error.
+            Path: La ruta absoluta del archivo guardado o None si ocurre un error.
         """
-        # 1. Preparar la ruta única mediante UUID
         target_path = self.prepare_new_photo_path(user_id, original_filename)
+        
+        # 1. Verificar si el usuario tiene almacenamiento inicializado
         if not target_path:
-            return None
+            raise ResourceNotFoundError(
+                message="El almacenamiento del usuario no ha sido inicializado.",
+                details={"user_id": str(user_id)}
+            )
 
         try:
-            # Aseguramos que el puntero del stream esté al inicio antes de copiar
             if file_stream.seekable():
                 file_stream.seek(0)
 
-            # 2. Escritura física en disco
-            with open(target_path, "wb") as buffer:
-                shutil.copyfileobj(file_stream, buffer)
+            # 2. Escritura física con captura de errores de disco (disco lleno, etc)
+            try:
+                with open(target_path, "wb") as buffer:
+                    shutil.copyfileobj(file_stream, buffer)
+            except OSError as e:
+                raise StorageError(
+                    message="Error de escritura en disco duro.",
+                    details={"user_id": str(user_id), "os_error": str(e)}
+                )
             
-            # 3. Cálculo de tamaño para persistencia de estadísticas
             file_size = target_path.stat().st_size
             
-            # 4. Actualización atómica de las estadísticas en la DB
-            # Usamos el método interno que ya maneja los deltas positivos
+            # 3. Actualización en DB (si el controller falla, lanzamos error)
             success = self.register_file_upload(user_id, file_size)
             
             if not success:
-                self.logger.error(f"Fallo en persistencia de DB para usuario {user_id}. Revirtiendo I/O.")
+                # Rollback físico inmediato
                 target_path.unlink(missing_ok=True)
-                return None
+                raise StorageError(
+                    message="No se pudo actualizar la cuota de almacenamiento en la base de datos.",
+                    details={"user_id": str(user_id), "file": original_filename}
+                )
 
-            self.logger.info(f"Archivo persistido físicamente: {target_path.name}")
             return target_path
 
         except Exception as e:
-            self.logger.error(f"Error crítico en save_photo_stream para {user_id}: {e}")
             if target_path and target_path.exists():
                 target_path.unlink()
-            return None
+            
+            # Si ya es un error nuestro, lo re-lanzamos; si no, lo envolvemos
+            if isinstance(e, (StorageError, ResourceNotFoundError)):
+                raise e
+            raise StorageError(f"Fallo inesperado en el almacenamiento: {str(e)}")
 
     def sync_db_stats_with_disk(self, user_id: UUID) -> bool:
         """
@@ -239,16 +272,28 @@ class StorageService:
         Returns:
             bool: True si la eliminación fue exitosa, False en caso contrario.
         """
+        if not file_path.exists():
+            # Si no existe, quizás ya se borró, lanzamos un error informativo
+            raise ResourceNotFoundError(
+                message="El archivo físico no existe en el servidor.",
+                details={"path": str(file_path)}
+            )
+
         try:
-            if file_path.exists():
-                file_size = file_path.stat().st_size
-                file_path.unlink()
-                # Restamos de la DB
-                return self.register_file_deletion(user_id, file_size)
-            return False
+            file_size = file_path.stat().st_size
+            file_path.unlink()
+            
+            success = self.register_file_deletion(user_id, file_size)
+            if not success:
+                self.logger.error(f"Archivo borrado pero falló actualización de cuota para {user_id}")
+                # Aquí no lanzamos error porque el archivo YA se borró, pero marcamos la inconsistencia en el log.
+                
+            return True
         except OSError as e:
-            self.logger.error(f"Error eliminando archivo {file_path}: {e}")
-            return False
+            raise StorageError(
+                message="No se pudo eliminar el archivo físico.",
+                details={"path": str(file_path), "os_error": str(e)}
+            )
 
     def delete_all_user_data(self, user_id: UUID) -> bool:
         """
@@ -267,6 +312,8 @@ class StorageService:
                 self.logger.warning(f"All physical data for user {user_id} has been deleted.")
                 return True
             except OSError as e:
-                self.logger.error(f"Error deleting directory {user_path}: {e}")
-                return False
+                raise StorageError(
+                    message="No se pudo eliminar la carpeta física del usuario.",
+                    details={"path": str(user_path), "os_error": str(e)}
+                )
         return True
