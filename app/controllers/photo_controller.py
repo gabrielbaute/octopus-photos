@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.schemas.metadata_schemas import PhotoMetadata
 from app.controllers.base_controller import BaseController
+from app.errors import OctopusError, ResourceNotFoundError
 from app.database.models.associations import album_photos
 from app.database.models.photos_model import PhotoDatabaseModel
 from app.database.models.albums_model import AlbumDatabaseModel
@@ -192,7 +193,54 @@ class PhotoController(BaseController):
             self.logger.error(f"Error linking photo {photo_id} to album {album_id}: {e}")
             self.session.rollback()
             return False
+
+    def add_photos_to_album(self, photo_ids: List[UUID], album_id: UUID) -> bool:
+        """
+        Relaciona múltiples fotos con un álbum en una sola transacción.
         
+        Args:
+            photo_ids (List[UUID]): Lista de IDs de las fotos.
+            album_id (UUID): ID del álbum.
+            
+        Returns:
+            bool: True si la operación fue exitosa.
+        """
+        # 1. Validaciones de rigor
+        album_id = self._validate_uudi(album_id)
+        valid_photo_ids = [self._validate_uudi(pid) for pid in photo_ids]
+
+        try:
+            # 2. Obtenemos el álbum
+            album = self.session.get(AlbumDatabaseModel, album_id)
+            if not album:
+                raise ResourceNotFoundError(message="Álbum no encontrado")
+
+            # 3. Obtenemos todas las fotos que existen de la lista proporcionada
+            # Esto es mucho más eficiente que un bucle: una sola consulta SQL con 'IN'
+            stmt = select(PhotoDatabaseModel).where(PhotoDatabaseModel.id.in_(valid_photo_ids))
+            photos = self.session.execute(stmt).scalars().all()
+
+            # 4. Agregamos solo las que no estén ya relacionadas
+            existing_ids = {p.id for p in album.photos}
+            added_count = 0
+            
+            for photo in photos:
+                if photo.id not in existing_ids:
+                    album.photos.append(photo)
+                    added_count += 1
+
+            # 5. Commit único para toda la operación
+            if added_count > 0:
+                self.session.commit()
+                self.logger.info(f"Se añadieron {added_count} fotos al álbum {album_id}")
+            
+            return True
+
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Error masivo al vincular fotos al álbum {album_id}: {e}")
+            return False
+
     def update_photo(self, photo_id: UUID, photo_update: PhotoUpdate) -> Optional[PhotoResponse]:
         """
         Actualiza los metadatos de una foto.
@@ -234,6 +282,48 @@ class PhotoController(BaseController):
             return False
         return self._delete_or_rollback(photo_db)
     
+    def remove_photo_from_album(self, photo_id: UUID, album_id: UUID) -> PhotoResponse:
+        """
+        Quita una foto de un album pero sin eliminarla ni de la base de datos ni del almacenamiento.
+
+        Args:
+            photo_id (UUID): ID de la foto.
+            album_id (UUID): ID del álbum.
+        
+        Returns:
+            PhotoResponse: El esquema de respuesta de la foto que se ha eliminado.
+        """
+        photo_id = self._validate_uudi(photo_id)
+        album_id = self._validate_uudi(album_id)
+
+        # 1. Buscamos la foto y el álbum con sus relaciones cargadas
+        # Usamos select(AlbumDatabaseModel) para acceder a su atributo .photos
+        from app.database.models.albums_model import AlbumDatabaseModel
+        from app.database.models.photos_model import PhotoDatabaseModel
+
+        photo = self.session.get(PhotoDatabaseModel, photo_id)
+        album = self.session.get(AlbumDatabaseModel, album_id)
+
+        if not photo or not album:
+            raise ResourceNotFoundError(
+                message="Foto o Álbum no encontrado",
+                details={"photo_id": str(photo_id), "album_id": str(album_id)}
+            )
+
+        # 2. Lógica de desasociación
+        if photo in album.photos:
+            album.photos.remove(photo)
+            try:
+                self.session.commit()
+                self.logger.info(f"Foto {photo_id} removida del álbum {album_id}")
+            except Exception as e:
+                self.session.rollback()
+                raise OctopusError(f"Error al desasociar la foto: {str(e)}")
+        else:
+            self.logger.warning(f"La foto {photo_id} no pertenecía al álbum {album_id}")
+
+        return PhotoResponse.model_validate(photo)
+
     def delete_album(self, album_id: UUID) -> bool:
         """
         Elimina el registro del álbum de la DB.
@@ -244,8 +334,19 @@ class PhotoController(BaseController):
         Returns:
             bool: True si la eliminación fue exitosa, False en caso contrario.
         """
-        album_id = self._validate_uudi(album_id)
-        album_db = self._get_item_by_id(AlbumDatabaseModel, album_id)
-        if not album_db:
+        album_id = self._validate_uudi(album_id)        
+        album = self.session.get(AlbumDatabaseModel, album_id)
+        
+        if not album:
             return False
-        return self._delete_or_rollback(album_db)
+
+        try:
+            # Al eliminar el objeto 'album', SQLAlchemy eliminará automáticamente
+            # las entradas en la tabla de asociación si está configurado en cascada simple.
+            self.session.delete(album)
+            self.session.commit()
+            return True
+        except Exception as e:
+            self.session.rollback()
+            self.logger.error(f"Error al eliminar álbum {album_id}: {e}")
+            return False
