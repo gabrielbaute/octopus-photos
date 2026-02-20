@@ -48,7 +48,29 @@ class UserResponse(UserBase):
     is_active: bool
     storage: Optional[UserStorage]
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "xxxx-xxxx-xxxx-xxxx",
+                    "username": "username",
+                    "email": "example@example.com",
+                    "role": "user",
+                    "created_at": "2023-01-01T00:00:00",
+                    "is_active": True,
+                    "storage": {
+                        "id": "xxxx-xxxx-xxxx-xxxx",
+                        "user_id": "xxxx-xxxx-xxxx-xxxx",
+                        "storage_path": "/path/to/storage",
+                        "count_files": 10,
+                        "storage_bytes_size": 1000000,
+                        "created_at": "2023-01-01T00:00:00"
+                    }
+                }
+            ]
+        }
+    )
 
 class UserListResponse(BaseModel):
     """

@@ -29,4 +29,22 @@ class PhotoMetadata(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "date_taken": "2023-01-01T00:00:00",
+                    "camera_make": "Canon",
+                    "camera_model": "Canon EOS 5D Mark IV",
+                    "focal_length": 24.1,
+                    "iso": 100,
+                    "exposure_time": 1/100,
+                    "aperture": 2.8,
+                    "shutter_speed": 1,
+                    "latitude": 40.7128,
+                    "longitude": -74.0060
+                }
+            ]
+        }
+    )

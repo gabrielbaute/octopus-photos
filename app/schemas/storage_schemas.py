@@ -21,4 +21,18 @@ class UserStorage(BaseModel):
     storage_bytes_size: Optional[int] = Field(..., description="Tamaño del almacenamiento en bytes")
     created_at: Optional[datetime] = Field(..., description="Fecha de creación del almacenamiento")
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "xxxx-xxxx-xxxx-xxxx",
+                    "user_id": "xxxx-xxxx-xxxx-xxxx",
+                    "storage_path": "/path/to/storage",
+                    "count_files": 10,
+                    "storage_bytes_size": 1000000,
+                    "created_at": "2023-01-01T00:00:00"
+                }
+            ]
+        }
+    )
