@@ -4,7 +4,8 @@ Helper to load all the api routes.
 
 from fastapi import FastAPI
 
-from app.api.routes.check_routes import router as check_router
+from app.api.routes import check_router, auth_router, user_router
+
 
 def include_routes(app: FastAPI, prefix: str):
     """Include all API routes in the FastAPI application.
@@ -12,4 +13,6 @@ def include_routes(app: FastAPI, prefix: str):
     Args:
         app (FastAPI): The FastAPI application instance.
     """
+    app.include_router(auth_router, prefix=prefix)
+    app.include_router(user_router, prefix=prefix)
     app.include_router(check_router, prefix=prefix)
