@@ -1,0 +1,1 @@
+from app.api.routes.check_routes import router as check_router
