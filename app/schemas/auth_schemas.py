@@ -66,7 +66,6 @@ class PasswordResetConfirm(BaseModel):
     
     )
 
-
 class UserLogin(BaseModel):
     """
     Esquema para el endpoint de autenticación.
@@ -77,3 +76,14 @@ class UserLogin(BaseModel):
     """
     email: EmailStr
     password: str
+
+class PasswordChange(BaseModel):
+    """
+    Esquema para el cambio de contraseña.
+
+    Args:
+        current_password (str): Contraseña actual.
+        new_password (str): Nueva contraseña.
+    """
+    current_password: str
+    new_password: str = Field(..., min_length=8)
