@@ -10,7 +10,7 @@ class PhotoBase(BaseModel):
     description: Optional[str] = Field(None, description="Descripción de la foto")
     tags: Optional[List[str]] = Field(None, description="Lista de etiquetas")
 
-class PhotoCreate(PhotoBase):
+class PhotoCreate(PhotoBase, PhotoMetadata):
     """
     Modelo para la creación (Upload). 
     Los campos de sistema (id, storage_path) no se piden al cliente.
