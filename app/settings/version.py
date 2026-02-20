@@ -2,4 +2,4 @@
 Módulo referencia para las versiones del proyecto
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
