@@ -3,7 +3,6 @@ Módulo de servicio para la gestión de los usuarios
 """
 import logging
 from uuid import UUID
-from pathlib import Path
 from typing import Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
