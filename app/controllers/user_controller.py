@@ -3,7 +3,7 @@ User controller module for database CRUD operations.
 """
 import logging
 from typing import Optional, Dict
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -17,6 +17,12 @@ class UserController(BaseController):
     Actúa como límite entre los esquemas de Pydantic y los modelos de SQLAlchemy.
     """
     def __init__(self, session: Session) -> None:
+        """
+        Inicializa el controlador con una sesión de base de datos dedicada.
+
+        Args:
+            session (Session): Sesión de base de datos.
+        """
         super().__init__(session)
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -98,7 +104,6 @@ class UserController(BaseController):
             self.logger.error(f"Error retrieving password hash for user {user_id}: {e}")
             return None
         
-    
     def get_all_users(self) -> UserListResponse:
         """
         Obtiene todos los usarios en la base de datos.
@@ -111,6 +116,30 @@ class UserController(BaseController):
         
         users_list = [UserResponse.model_validate(user) for user in users_db]
         return UserListResponse(count=len(users_list), users=users_list)
+
+    def get_multi(self, skip: int = 0, limit: int = 100) -> UserListResponse:
+        """
+        Obtiene una lista paginada de usuarios.
+
+        Args:
+            skip (int): Desplazamiento.
+            limit (int): Tamaño de página.
+
+        Returns:
+            UserListResponse: Lista de usuarios.
+        """
+        # 1. Obtener el conteo total (independiente del límite/offset)
+        count_stmt = select(func.count()).select_from(UsersDatabaseModel)
+        total_count = self.session.execute(count_stmt).scalar() or 0
+
+        # 2. Obtener los registros paginados
+        stmt = select(UsersDatabaseModel).offset(skip).limit(limit)
+        users_db = self.session.execute(stmt).scalars().all()
+        
+        return UserListResponse(
+            count=total_count, 
+            users=[UserResponse.model_validate(user) for user in users_db]
+        )
 
     def update_user(self, user_id: str, update_data: UserUpdate) -> Optional[UserResponse]:
         """
