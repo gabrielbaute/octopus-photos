@@ -8,9 +8,11 @@ class Settings(BaseSettings):
     # Datos base
     APP_NAME: str = "OctopusPhotos"
     APP_VERSION: str = __version__
+    APP_URL: str = "http://localhost:8000"
 
     # Directorios
     BASE_PATH: Path = Path.home() / f".{APP_NAME}"
+    UI_PATH: Path = Path(__file__).parent.parent / "ui"
     DATA_PATH: Path = BASE_PATH / "data"
     LOGS_PATH: Path = DATA_PATH / "logs"
     CONFIG_PATH: Path = BASE_PATH / "config"
@@ -36,6 +38,15 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_MINUTES: int
+
+    # Mail
+    MAIL_HOST: str = "smtp.google.com"
+    MAIL_PORT: int = 587
+    MAIL_USERNAME: str = "gabrielbaute@gmail.com"
+    MAIL_PASSWORD: str = "your-email-password"
+    MAIL_USE_TLS: bool = True
+    MAIL_USE_SSL: bool = False
+    MAIL_TEMPLATES_DIR: Path = UI_PATH / "emails"
 
     @staticmethod
     def ensure_dirs() -> None:
