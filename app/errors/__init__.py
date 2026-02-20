@@ -5,3 +5,4 @@ from app.errors.base import (
     StorageError, 
     PermissionDeniedError
 )
+from app.errors.config_errors import ConfigurationError

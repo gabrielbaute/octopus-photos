@@ -1,7 +1,10 @@
+import sys
 from pathlib import Path
+from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.settings.version import __version__
+from app.errors.config_errors import ConfigurationError
 
 
 class Settings(BaseSettings):
@@ -48,24 +51,47 @@ class Settings(BaseSettings):
     MAIL_USE_SSL: bool = False
     MAIL_TEMPLATES_DIR: Path = UI_PATH / "emails"
 
-    @staticmethod
-    def ensure_dirs() -> None:
-        dirs = [
-            Settings.DATA_PATH,
-            Settings.LOGS_PATH,
-            Settings.CONFIG_PATH,
-            Settings.TMP_PATH,
-            Settings.INSTANCE_PATH
-        ]
-        
-        try:
-            Settings.BASE_PATH.mkdir(parents=True, exist_ok=True)
-            for dir in dirs:
-                dir.mkdir(parents=True, exist_ok=True)
-        except FileExistsError:
-            pass
-
-
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-settings = Settings()
+    def ensure_dirs(self) -> None:
+            """Crea la estructura de directorios necesaria para self-hosting."""
+            dirs = [
+                self.BASE_PATH, self.DATA_PATH, self.LOGS_PATH, 
+                self.CONFIG_PATH, self.TMP_PATH, self.INSTANCE_PATH,
+                self.STORAGE_BASE_PATH
+            ]
+            for directory in dirs:
+                try:
+                    directory.mkdir(parents=True, exist_ok=True)
+                except OSError as e:
+                    # Aquí podrías lanzar un error semántico si no hay permisos de escritura
+                    print(f" ERROR CRÍTICO: No se pudo crear el directorio {directory}. revise permisos.")
+                    sys.exit(1)
+
+def load_settings() -> Settings:
+    """
+    Instancia la configuración capturando errores de validación para
+    presentar mensajes amigables al usuario.
+    """
+    try:
+        instance = Settings()
+        instance.ensure_dirs()
+        return instance
+    except ValidationError as e:
+        missing_vars = [str(err["loc"][0]) for err in e.errors() if err["type"] == "missing"]
+        
+        message = (
+            "\n" + "="*60 + "\n"
+            " ERROR DE CONFIGURACIÓN EN OCTOPUS PHOTOS\n"
+            "="*60 + "\n"
+            "Faltan variables de entorno obligatorias en tu archivo .env o sistema:\n"
+            f"  {', '.join(missing_vars)}\n\n"
+            "Por favor, revisa el archivo '.env.example' y asegúrate de configurar\n"
+            "estas llaves para que el servicio pueda iniciar.\n"
+            "="*60
+        )
+        # Lanzamos nuestro error personalizado o salimos elegantemente
+        print(message)
+        sys.exit(1)
+
+settings = load_settings()
