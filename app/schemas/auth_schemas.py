@@ -77,6 +77,17 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "email": "example@example.com",
+                    "password": "password"
+                }
+            ]
+        }
+    )
+
 class PasswordChange(BaseModel):
     """
     Esquema para el cambio de contraseña.
@@ -87,3 +98,14 @@ class PasswordChange(BaseModel):
     """
     current_password: str
     new_password: str = Field(..., min_length=8)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "current_password": "current_password",
+                    "new_password": "new_password"
+                }
+            ]
+        }
+    )
