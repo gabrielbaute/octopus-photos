@@ -30,9 +30,9 @@ def create_app(settings: Settings) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        allow_credentials=True,
     )
 
     include_routes(app, prefix="/api/v1")
