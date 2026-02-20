@@ -1,6 +1,6 @@
 import uuid
-from datetime import datetime
 from typing import TYPE_CHECKING
+from datetime import datetime, timezone
 from sqlalchemy import Integer, DateTime, String, ForeignKey, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,8 +16,8 @@ class UserStorageDatabaseModel(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), unique=True)
     storage_path: Mapped[str] = mapped_column(String, nullable=False)
     count_files: Mapped[int] = mapped_column(Integer, default=0)
-    storage_bytes_size: Mapped[int] = mapped_column(BigInteger, default=0)  # BigInt para bytes
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    storage_bytes_size: Mapped[int] = mapped_column(BigInteger, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relación con User
     user: Mapped["UsersDatabaseModel"] = relationship(back_populates="storage")

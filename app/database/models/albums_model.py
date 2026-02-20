@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
 from typing import TYPE_CHECKING
-from sqlalchemy import Integer, DateTime, String, ForeignKey
+from datetime import datetime, timezone
+from sqlalchemy import DateTime, String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.db_base import Base
@@ -18,7 +18,7 @@ class AlbumDatabaseModel(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relación con User
     user: Mapped["UsersDatabaseModel"] = relationship(back_populates="albums")

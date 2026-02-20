@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime
 from typing import TYPE_CHECKING, List
-from sqlalchemy import Integer, DateTime, String, ForeignKey
+from datetime import datetime, timezone
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Integer, DateTime, String, ForeignKey, JSON
 
 from app.database.db_base import Base
 from app.database.models.associations import album_photos
@@ -17,11 +17,11 @@ class PhotoDatabaseModel(Base):
     # Almacenamiento y control
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
-    storage_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    storage_date: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     storage_path: Mapped[str] = mapped_column(String, nullable=False)
     file_name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=True)
-    tags: Mapped[List[str]] = mapped_column(String, nullable=True)
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=True)
 
     # Metadatos
     date_taken: Mapped[datetime] = mapped_column(DateTime, nullable=True)
