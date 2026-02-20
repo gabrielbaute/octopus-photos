@@ -5,14 +5,14 @@ import logging
 from uuid import UUID
 from typing import Optional, List
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.schemas.metadata_schemas import PhotoMetadata
 from app.controllers.base_controller import BaseController
 from app.database.models.associations import album_photos
 from app.database.models.photos_model import PhotoDatabaseModel
 from app.database.models.albums_model import AlbumDatabaseModel
-from app.schemas.photos_schemas import PhotoCreate, PhotoResponse, PhotoResponseList
+from app.schemas import PhotoCreate, PhotoResponse, PhotoResponseList, AlbumResponse
 
 class PhotoController(BaseController):
     """
@@ -101,6 +101,56 @@ class PhotoController(BaseController):
             count=total,
             photos=[PhotoResponse.model_validate(p) for p in photos_db]
         )
+    
+    def create_album(self, user_id: UUID, album_name: str) -> Optional[AlbumResponse]:
+        """
+        Crea un nuevo álbum para un usuario.
+
+        Args:
+            user_id (UUID): ID del propietario.
+            album_name (str): Nombre del álbum.
+
+        Returns:
+            Optional[AlbumDatabaseModel]: El modelo del álbum creado o None.
+        """
+        new_album = AlbumDatabaseModel(user_id=user_id, name=album_name)
+        if not self._commit_or_rollback(new_album):
+            return None
+        self.session.refresh(new_album)
+        return AlbumResponse.model_validate(new_album)
+
+    def get_album_by_id(self, album_id: UUID) -> Optional[AlbumResponse]:
+        """
+        Recupera un álbum por su ID.
+
+        Args:
+            album_id (UUID): ID del álbum.
+
+        Returns:
+            Optional[AlbumResponse]: El esquema de respuesta o None.
+        """
+        album_db = self._get_item_by_id(AlbumDatabaseModel, album_id)
+        if album_db:
+            return AlbumResponse.model_validate(album_db)
+        return None
+
+    def get_user_albums(self, user_id: UUID) -> List[AlbumResponse]:
+        """
+        Recupera todos los álbumes de un usuario.
+
+        Args:
+            user_id (UUID): ID del propietario.
+
+        Returns:
+            List[AlbumResponse]: Lista de álbumes.
+        """
+        stmt = (
+            select(AlbumDatabaseModel)
+            .where(AlbumDatabaseModel.user_id == user_id)
+            .options(selectinload(AlbumDatabaseModel.photos))
+        )
+        albums_db = self.session.execute(stmt).scalars().all()
+        return [AlbumResponse.model_validate(a) for a in albums_db]
 
     def add_photo_to_album(self, photo_id: UUID, album_id: UUID) -> bool:
         """
@@ -141,3 +191,18 @@ class PhotoController(BaseController):
         if not photo_db:
             return False
         return self._delete_or_rollback(photo_db)
+    
+    def delete_album(self, album_id: UUID) -> bool:
+        """
+        Elimina el registro del álbum de la DB.
+
+        Args:
+            album_id (UUID): ID del álbum.
+        
+        Returns:
+            bool: True si la eliminación fue exitosa, False en caso contrario.
+        """
+        album_db = self._get_item_by_id(AlbumDatabaseModel, album_id)
+        if not album_db:
+            return False
+        return self._delete_or_rollback(album_db)
