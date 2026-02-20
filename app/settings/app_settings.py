@@ -23,10 +23,20 @@ class Settings(BaseSettings):
     STORAGE_BASE_PATH: Path = DATA_PATH / "storage"
 
     # Database
-    DATABASE_URL: str = f"sqlite:///{APP_NAME}.db"
     INSTANCE_PATH: Path = BASE_PATH / "instance"
+    @property
+    def DATABASE_URL(self) -> str:
+        db_path = self.INSTANCE_PATH / f"{self.APP_NAME}.db"
+        # En Windows, Path.absolute() devolverá algo como C:\Users\...
+        # sqlite://// para absoluto
+        return f"sqlite:///{db_path.absolute()}"
+    
     DATABASE_ECHO: bool = False
     DATABASE_CONNECT_ARGS: dict = {}
+    DATABASE_POOL_SIZE: int = 10
+    DATABASE_POOL_RECYCLE: int = 3600
+    DATABASE_POOL_TIMEOUT: int = 30
+    DATABASE_POOL_PRE_PING: bool = True
 
     # API
     API_HOST: str = "127.0.0.1"
