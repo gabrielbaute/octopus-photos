@@ -12,7 +12,7 @@ from app.services.users_service import UserService
 from app.services.storage_service import StorageService
 from app.services.metadata_service import MetadataService
 from app.controllers.photo_controller import PhotoController
-from app.schemas import PhotoCreate, PhotoResponse, AlbumResponse, PhotoResponseList
+from app.schemas import PhotoCreate, PhotoResponse, AlbumResponse, PhotoResponseList, PhotoUpdate
 from app.errors import ValidationError, ResourceNotFoundError, PermissionDeniedError, OctopusError
 
 class PhotosService:
@@ -199,6 +199,19 @@ class PhotosService:
         """
         return self.photo_controller.get_user_albums(user_id)
     
+    # =========== MÉTODOS PUT ===========
+    def update_photo_metadata(self, photo_id: UUID, photo_update: PhotoUpdate) -> Optional[PhotoResponse]:
+        """
+        Actualiza los metadatos de una foto.
+
+        Args:
+            photo_id (UUID): ID de la foto.
+            photo_update (PhotoUpdate): Datos actualizados.
+
+        Returns:
+            Optional[PhotoResponse]: El esquema de respuesta o None.
+        """
+        return self.photo_controller.update_photo(photo_id, photo_update)
     # =========== MÉTODOS DELETE ===========
     def delete_photo(self, photo_id: UUID, requester_id: UUID) -> bool:
         """

@@ -12,7 +12,7 @@ from app.controllers.base_controller import BaseController
 from app.database.models.associations import album_photos
 from app.database.models.photos_model import PhotoDatabaseModel
 from app.database.models.albums_model import AlbumDatabaseModel
-from app.schemas import PhotoCreate, PhotoResponse, PhotoResponseList, AlbumResponse
+from app.schemas import PhotoCreate, PhotoResponse, PhotoResponseList, AlbumResponse, PhotoUpdate
 
 class PhotoController(BaseController):
     """
@@ -192,6 +192,31 @@ class PhotoController(BaseController):
             self.logger.error(f"Error linking photo {photo_id} to album {album_id}: {e}")
             self.session.rollback()
             return False
+        
+    def update_photo(self, photo_id: UUID, photo_update: PhotoUpdate) -> Optional[PhotoResponse]:
+        """
+        Actualiza los metadatos de una foto.
+
+        Args:
+            photo_id (UUID): ID de la foto.
+            photo_update (PhotoUpdate): Data a actualizar.
+        
+        Returns:
+            Optional[PhotoResponse]: El esquema de respuesta o None.
+        """
+        photo_id = self._validate_uudi(photo_id)
+        photo_db = self._get_item_by_id(PhotoDatabaseModel, photo_id)
+        if not photo_db:
+            return None
+
+        for field, value in photo_update.model_dump(exclude_unset=True).items():
+            setattr(photo_db, field, value)
+
+        if not self._commit_or_rollback(photo_db):
+            return None
+
+        self.session.refresh(photo_db)
+        return PhotoResponse.model_validate(photo_db)
 
     def delete_photo(self, photo_id: UUID) -> bool:
         """
