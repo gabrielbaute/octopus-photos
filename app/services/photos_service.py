@@ -12,7 +12,7 @@ from app.services.users_service import UserService
 from app.services.storage_service import StorageService
 from app.services.metadata_service import MetadataService
 from app.controllers.photo_controller import PhotoController
-from app.schemas import PhotoCreate, PhotoResponse, AlbumResponse
+from app.schemas import PhotoCreate, PhotoResponse, AlbumResponse, PhotoResponseList
 from app.errors import ValidationError, ResourceNotFoundError, PermissionDeniedError, OctopusError
 
 class PhotosService:
@@ -149,7 +149,19 @@ class PhotosService:
         return self.photo_controller.add_photo_to_album(photo_id, album_id)
 
     # =========== MÉTODOS GET ===========
-    def get_user_photos(self, user_id: UUID, skip: int = 0, limit: int = 100) -> PhotoResponse:
+    def get_photo_by_id(self, photo_id: UUID) -> Optional[PhotoResponse]:
+        """
+        Recupera una foto por su ID.
+
+        Args:
+            photo_id (UUID): ID de la foto.
+
+        Returns:
+            Optional[PhotoResponse]: El esquema de respuesta o None.
+        """
+        return self.photo_controller.get_by_id(photo_id)
+    
+    def get_user_photos(self, user_id: UUID, skip: int = 0, limit: int = 100) -> PhotoResponseList:
         """
         Recupera la lista de fotos de un usuario con paginación.
 
@@ -159,7 +171,7 @@ class PhotosService:
             limit (int): Tamaño de página.
 
         Returns:
-            PhotoResponse: Objeto con la lista de fotos y el total.
+            PhotoResponseList: Objeto con la lista de fotos y el total.
         """
         return self.photo_controller.get_user_photos(user_id, skip, limit)
     
