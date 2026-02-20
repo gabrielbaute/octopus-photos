@@ -1,25 +1,40 @@
+
 """
 Módulo de configuración de la base de datos
 """
-from pathlib import Path
+import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-from app.settings import settings
+from app.settings import Settings, settings
 from app.database.db_base import Base
+from app.database.models import (
+    users_model, 
+    storage_model, 
+    photos_model, 
+    albums_model, 
+    associations
+)
 
+logger = logging.getLogger("DatabaseSettings")
+
+logger.info("Creando engine...")
 engine = create_engine(settings.DATABASE_URL, connect_args=settings.DATABASE_CONNECT_ARGS)
+logger.info("Generando SessionLocal...")
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def init_db(instance_path: Path = settings.INSTANCE_PATH) -> None:
+def init_db(settings: Settings) -> None:
     """
     Inicializa la base de datos.
-    
+
     Args:
-        instance_path (Path): Ruta de la instancia de la base de datos.
+        settings (Settings): Configuración de la aplicación.
 
     Returns:
         None
     """
-    Path(instance_path).mkdir(parents=True, exist_ok=True)
-    Base.metadata.create_all(bind=engine)
+    settings.INSTANCE_PATH.mkdir(parents=True, exist_ok=True)    
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info(f"Base de datos inicializada en: {settings.DATABASE_URL}")
+    except Exception as e:
+        logger.error(f"Error al inicializar la base de datos: {e}")
