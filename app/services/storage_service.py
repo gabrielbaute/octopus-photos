@@ -4,8 +4,9 @@ Módulo de servicio para la gestión física del almacenamiento.
 import uuid
 import shutil
 import logging
-from pathlib import Path
 from uuid import UUID
+from pathlib import Path
+from sqlalchemy.orm import Session
 from typing import Optional, BinaryIO
 
 from app.settings import settings
@@ -19,9 +20,9 @@ class StorageService:
     Orquesta la creación de directorios y la actualización de cuotas en DB.
     """
 
-    def __init__(self, controller: StorageController):
+    def __init__(self, session: Session):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.controller = controller
+        self.controller = StorageController(session)
         self.base_path = Path(settings.STORAGE_BASE_PATH)
         self._ensure_base_path()
 
