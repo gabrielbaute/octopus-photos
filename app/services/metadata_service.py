@@ -6,13 +6,15 @@ import exifread
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Any, Dict
+
+from app.errors import ValidationError, OctopusError
 from app.schemas.metadata_schemas import PhotoMetadata
 
 class MetadataService:
     """Servicio para extraer y normalizar metadatos EXIF de imágenes."""
 
     def __init__(self):
-        self.logger = logging.getLogger(self.__name__)
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def _convert_to_float(self, value: Any) -> Optional[float]:
         """
@@ -77,11 +79,13 @@ class MetadataService:
         if not date_str:
             return None
         try:
-            return datetime.strptime(str(date_str), '%Y:%M:%D %H:%M:%S')
+            # El formato EXIF suele ser YYYY:MM:DD, no con barras o guiones
+            # Corregido: %Y:%m:%d en lugar de %Y:%M:%D (que sería año:minuto:día)
+            return datetime.strptime(str(date_str), '%Y:%m:%d %H:%M:%S')
         except ValueError:
             return None
 
-    def extract_metadata(self, file_path: Path) -> Optional[PhotoMetadata]:
+    def extract_metadata(self, file_path: Path) -> PhotoMetadata:
         """
         Extrae y normaliza la metadata de una foto.
         
@@ -89,14 +93,14 @@ class MetadataService:
             file_path (Path): Ruta al archivo de imagen.
         
         Returns:
-            Optional[PhotoMetadata]: Metadata extraída o None si falla.
+            PhotoMetadata: Metadata extraída o None si falla.
         """
         try:
             with open(file_path, 'rb') as f:
                 tags = exifread.process_file(f, details=False)
             
             if not tags:
-                return None
+                return PhotoMetadata()
 
             lat, lon = self._parse_gps(tags)
 
@@ -116,5 +120,5 @@ class MetadataService:
             return metadata
 
         except Exception as e:
-            self.logger.error(f"Error procesando metadata de {file_path}: {e}")
-            return None
+            self.logger.warning(f"No se pudo extraer metadata de {file_path}: {e}")
+            return PhotoMetadata()
