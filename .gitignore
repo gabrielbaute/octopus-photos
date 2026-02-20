@@ -11,3 +11,6 @@ wheels/
 
 # Variables de entorno
 *.env
+
+# Tests
+.pytest_cache/
