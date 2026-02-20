@@ -30,4 +30,4 @@ class UsersDatabaseModel(Base):
     photos: Mapped[list["PhotoDatabaseModel"]] = relationship(back_populates="user")
 
     # Dentro de la clase UsersDatabaseModel
-    albums = relationship("AlbumDatabaseModel", back_populates="user", cascade="all, delete-orphan")
+    albums: Mapped[list["AlbumDatabaseModel"]] = relationship(back_populates="user", cascade="all, delete-orphan")
