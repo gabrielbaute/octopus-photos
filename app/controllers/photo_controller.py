@@ -4,7 +4,7 @@ Photo controller module for database CRUD operations.
 import logging
 from uuid import UUID
 from typing import Optional, List
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session, selectinload
 
 from app.schemas.metadata_schemas import PhotoMetadata
@@ -89,6 +89,8 @@ class PhotoController(BaseController):
             PhotoResponseList: Objeto con la lista de fotos y el total.
         """
         user_id = self._validate_uudi(user_id)
+        
+        # 1. Consulta paginada
         stmt = (
             select(PhotoDatabaseModel)
             .where(PhotoDatabaseModel.user_id == user_id)
@@ -96,8 +98,14 @@ class PhotoController(BaseController):
             .limit(limit)
         )
         photos_db = self.session.execute(stmt).scalars().all()
-        count_stmt = select(PhotoDatabaseModel).where(PhotoDatabaseModel.user_id == user_id)
-        total = len(self.session.execute(count_stmt).scalars().all())
+        
+        # 2. Conteo eficiente en el motor de DB
+        count_stmt = (
+            select(func.count())
+            .select_from(PhotoDatabaseModel)
+            .where(PhotoDatabaseModel.user_id == user_id)
+        )
+        total = self.session.execute(count_stmt).scalar() or 0
 
         return PhotoResponseList(
             count=total,
