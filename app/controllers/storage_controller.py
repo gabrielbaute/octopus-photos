@@ -11,6 +11,12 @@ class StorageController(BaseController):
     """Controlador para la gestión de estadísticas de almacenamiento en DB."""
 
     def __init__(self, session: Session) -> None:
+        """
+        Inicializa el controlador con una sesión de base de datos dedicada.
+
+        Args:
+            session (Session): Sesión de base de datos.
+        """
         super().__init__(session)
         self.logger = logging.getLogger(self.__class__.__name__)
 
