@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
 from app.enums.user_roles_enum import UserRole
+from app.schemas.storage_schemas import UserStorage
 
 class UserBase(BaseModel):
     """
@@ -40,10 +41,12 @@ class UserResponse(UserBase):
         role (UserRole): Rol del usuario.
         created_at (datetime): Fecha de creación.
         is_active (bool): Indica si el usuario está activo.
+        storage (Optional[UserStorage]): Ruta del almacenamiento.
     """
     id: UUID
     created_at: datetime
     is_active: bool
+    storage: Optional[UserStorage]
 
     model_config = ConfigDict(from_attributes=True)
 
