@@ -166,6 +166,41 @@ class PhotoController(BaseController):
         albums_db = self.session.execute(stmt).scalars().all()
         return [AlbumResponse.model_validate(a) for a in albums_db]
 
+    def filter_owned_photos(self, photo_ids: List[UUID], user_id: UUID) -> List[UUID]:
+        """
+        Consulta en DB los IDs que pertenecen al usuario.
+
+        Args:
+            photo_ids (List[UUID]): Lista de IDs a verificar.
+            user_id (UUID): ID del usuario propietario.
+
+        Returns:
+            List[UUID]: Lista de IDs que efectivamente pertenecen al usuario.
+        """
+        stmt = (
+            select(PhotoDatabaseModel.id)
+            .where(
+                PhotoDatabaseModel.id.in_(photo_ids),
+                PhotoDatabaseModel.user_id == user_id
+            )
+        )
+        return list(self.session.execute(stmt).scalars().all())
+
+    def is_album_owner(self, album_id: UUID, user_id: UUID) -> bool:
+        """
+        Comprobación de propiedad de álbum a nivel de datos.
+
+        Args:
+            album_id (UUID): ID del álbum.
+            user_id (UUID): ID del usuario propietario.
+
+        Returns:
+            bool: True si el álbum pertenece al usuario, False en caso contrario.
+        """
+        from app.database.models.albums_model import AlbumDatabaseModel
+        album = self.session.get(AlbumDatabaseModel, album_id)
+        return album is not None and album.user_id == user_id
+
     def add_photo_to_album(self, photo_id: UUID, album_id: UUID) -> bool:
         """
         Crea la relación N:N entre una foto y un álbum.
