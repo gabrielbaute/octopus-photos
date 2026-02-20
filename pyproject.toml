@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "bcrypt==3.1.7",
     "email-validator>=2.3.0",
     "exifread>=3.5.1",
     "fastapi>=0.129.0",
@@ -22,4 +23,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "bumpver>=2025.1131",
+    "pytest>=9.0.2",
+    "pytest-mock>=3.15.1",
 ]
