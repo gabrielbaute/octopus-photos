@@ -2,11 +2,13 @@
 Módulo de rutas para la gestión de usuarios (Autogestión).
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.api.dependencies import get_current_user, get_user_service
-from app.schemas import UserResponse, UserUpdate, PasswordChange
-from app.services.users_service import UserService
-from app.services.security_service import SecurityService
+
 from app.errors import OctopusError
+from app.services.users_service import UserService
+from app.services.storage_service import StorageService
+from app.services.security_service import SecurityService
+from app.schemas import UserResponse, UserUpdate, PasswordChange, UserStorage
+from app.api.dependencies import get_current_user, get_user_service, get_storage_service
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -14,6 +16,15 @@ router = APIRouter(prefix="/users", tags=["Users"])
 def get_my_profile(current_user: UserResponse = Depends(get_current_user)):
     """Retorna el perfil del usuario autenticado."""
     return current_user
+
+@router.get("/me/storage", response_model=UserStorage)
+def get_my_storage_info(
+    current_user: UserResponse = Depends(get_current_user),
+    storage_service: StorageService = Depends(get_storage_service)):
+    """
+    Retorna información de almacenamiento del usuario.
+    """
+    return storage_service.get_user_storage(current_user.id)
 
 @router.patch("/me", response_model=UserResponse)
 def update_my_profile(
