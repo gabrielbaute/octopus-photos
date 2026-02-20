@@ -1,7 +1,7 @@
 from uuid import UUID, uuid4
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, computed_field
 
 from app.schemas.metadata_schemas import PhotoMetadata
 
@@ -16,6 +16,20 @@ class PhotoCreate(PhotoBase, PhotoMetadata):
     Los campos de sistema (id, storage_path) no se piden al cliente.
     """
     file_name: str
+
+class PhotoUpdate(BaseModel):
+    """Esquema para actualizar metadatos editables por el usuario."""
+    description: Optional[str] = Field(None, max_length=500)
+    tags: Optional[List[str]] = Field(None)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "description": "Una descripción nueva para mi foto de vacaciones",
+                "tags": ["verano", "playa", "2026"]
+            }
+        }
+    )
 
 class PhotoResponse(PhotoBase, PhotoMetadata):
     """
@@ -55,6 +69,18 @@ class PhotoResponse(PhotoBase, PhotoMetadata):
             ]
         }
     )
+
+    @computed_field
+    @property
+    def url_original(self) -> str:
+        """URL dinámica para descargar el archivo original."""
+        return f"/api/v1/photos/{self.id}/download"
+
+    @computed_field
+    @property
+    def url_thumbnail(self) -> str:
+        """URL dinámica para obtener la miniatura de previsualización."""
+        return f"/api/v1/photos/{self.id}/thumbnail"
 
 class PhotoResponseList(BaseModel):
     """Contenedor para respuestas paginadas o listados."""
