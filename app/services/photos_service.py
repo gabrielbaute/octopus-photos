@@ -148,6 +148,19 @@ class PhotosService:
         """
         return self.photo_controller.add_photo_to_album(photo_id, album_id)
 
+    def add_photos_to_album(self, photo_ids: List[UUID], album_id: UUID) -> bool:
+        """
+        Relaciona múltiples fotos con un álbum en una sola transacción.
+
+        Args:
+            photo_ids (List[UUID]): Lista de IDs de las fotos.
+            album_id (UUID): ID del álbum.
+
+        Returns:
+            bool: True si la operación fue exitosa.
+        """
+        return self.photo_controller.add_photos_to_album(photo_ids, album_id)
+    
     # =========== MÉTODOS GET ===========
     def get_photo_by_id(self, photo_id: UUID) -> Optional[PhotoResponse]:
         """
@@ -224,33 +237,52 @@ class PhotosService:
         Returns:
             bool: True si se eliminó, False si no se pudo eliminar.
         """
+        # 1. Obtener la información de la foto antes de que desaparezca
         photo = self.photo_controller.get_by_id(photo_id)
         if not photo:
-            raise ResourceNotFoundError(
-                message=f"Foto no encontrada.",
-                details={"photo_id": str(photo_id)}
-            )
+            raise ResourceNotFoundError(message="Foto no encontrada")
 
-        user_photo = self.user_service.get_user_by_id(requester_id)
-        if not user_photo:
-            raise ResourceNotFoundError(
-                message="Usuario solicitante de la acción no encontrado",
-                details={"user_id": str(requester_id)}
-            )
-        
-        if user_photo.id != photo.user_id and not self.user_service._is_user_admin(requester_id):
-            raise PermissionDeniedError(
-                message="Privilegios insuficientes",
-                details={"action": "delete_photo", "required": "Rol de ADMIN o propietario de la foto."}
-            )
-        
+        # 2. Validación de permisos (Rigor de seguridad)
+        # Nota: Usamos directamente requester_id y photo.user_id para evitar llamadas extra
+        is_admin = self.user_service._is_user_admin(requester_id)
+        if photo.user_id != requester_id and not is_admin:
+            raise PermissionDeniedError(message="No tienes permiso para borrar esta foto")
+
+        # 3. BORRADO FÍSICO (Original)
+        # El storage_service.delete_photo_file ya actualiza la cuota del usuario
+        original_path = Path(photo.storage_path)
+        self.storage_service.delete_photo_file(photo.user_id, original_path)
+
+        # 4. BORRADO DE MINIATURA (Opcional pero recomendado para limpieza total)
+        try:
+            thumb_dir = self.storage_service.get_user_thubnail_path(photo.user_id)
+            thumb_path = Path(thumb_dir) / original_path.name
+            if thumb_path.exists():
+                thumb_path.unlink()
+        except Exception as e:
+            # Si falla la miniatura, solo lo logueamos; no detenemos el proceso
+            self.logger.warning(f"No se pudo eliminar la miniatura de {photo_id}: {e}")
+
+        # 5. BORRADO DE BASE DE DATOS
         success = self.photo_controller.delete_photo(photo_id)
-        if not success:
-            raise ResourceNotFoundError(
-                message=f"Foto no encontrada.",
-                details={"photo_id": str(photo_id)}
-            )
+        
+        if success:
+            self.logger.info(f"Foto {photo_id} eliminada completamente por usuario {requester_id}")
+            
         return success
+    
+    def remove_photo_from_album(self, photo_id: UUID, album_id: UUID) -> PhotoResponse:
+        """
+        Quita una foto de un album pero sin eliminarla ni de la base de datos ni del almacenamiento.
+
+        Args:
+            photo_id (UUID): ID de la foto.
+            album_id (UUID): ID del álbum.
+
+        Returns:
+            PhotoResponse: El esquema de respuesta de la foto que se ha eliminado.
+        """
+        return self.photo_controller.remove_photo_from_album(photo_id, album_id)
     
     def delete_album(self, album_id: UUID, requester_id: UUID) -> bool:
         """
