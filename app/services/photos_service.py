@@ -34,6 +34,36 @@ class PhotosService:
         self.thumb_size = (250, 250)
 
     # =========== MÉTODOS PRIVADOS ===========
+    def _validate_ownership(self, photo_ids: List[UUID], user_id: UUID) -> List[UUID]:
+        """
+        Verifica que una lista de fotos pertenezca a un usuario.
+        
+        Args:
+            photo_ids: Lista de IDs a verificar.
+            user_id: ID del usuario propietario.
+            
+        Returns:
+            List[UUID]: Lista de IDs que efectivamente pertenecen al usuario.
+            
+        Raises:
+            PermissionDeniedError: Si algún ID no pertenece al usuario y no es ADMIN.
+        """
+        # Si es ADMIN, saltamos la validación de propiedad (opcional según tu política)
+        if self.user_service._is_user_admin(user_id):
+            return photo_ids
+
+        # Consultamos al controlador (quien sí conoce los modelos) 
+        # para que nos devuelva solo las fotos que coinciden con el dueño.
+        owned_ids = self.photo_controller.filter_owned_photos(photo_ids, user_id)
+        
+        if len(owned_ids) != len(photo_ids):
+            raise PermissionDeniedError(
+                message="Uno o más recursos no te pertenecen.",
+                details={"requested": len(photo_ids), "authorized": len(owned_ids)}
+            )
+            
+        return owned_ids
+
     def _generate_thumbnail(self, original_path: Path, user_id: UUID) -> bool:
         """
         Genera una versión reducida de la imagen para previsualizaciones.
@@ -147,18 +177,29 @@ class PhotosService:
         """
         return self.photo_controller.add_photo_to_album(photo_id, album_id)
 
-    def add_photos_to_album(self, photo_ids: List[UUID], album_id: UUID) -> bool:
+    def add_photos_to_album(self, photo_ids: List[UUID], album_id: UUID, requester_id: UUID) -> bool:
         """
         Relaciona múltiples fotos con un álbum en una sola transacción.
 
         Args:
             photo_ids (List[UUID]): Lista de IDs de las fotos.
             album_id (UUID): ID del álbum.
+            requester_id (UUID): ID del usuario que solicita la operación.
 
         Returns:
             bool: True si la operación fue exitosa.
         """
-        return self.photo_controller.add_photos_to_album(photo_ids, album_id)
+        # 1. Validar propiedad de las fotos (usando nuestro nuevo método)
+        valid_photo_ids = self._validate_ownership(photo_ids, requester_id)
+
+        # 2. Validar propiedad del álbum 
+        # Aquí lo ideal sería llamar a un AlbumService, pero si aún no existe,
+        # el controlador de fotos puede hacer la comprobación rápida.
+        if not self.photo_controller.is_album_owner(album_id, requester_id):
+             raise PermissionDeniedError(message="No eres el propietario del álbum.")
+
+        # 3. Delegar la operación masiva al controlador
+        return self.photo_controller.add_photos_to_album(valid_photo_ids, album_id)
     
     # =========== MÉTODOS GET ===========
     def get_photo_by_id(self, photo_id: UUID) -> Optional[PhotoResponse]:
