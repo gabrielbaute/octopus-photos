@@ -2,9 +2,10 @@
 User controller module for database CRUD operations.
 """
 import logging
-from typing import Optional, Dict
+from uuid import UUID
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
+from typing import Optional, Dict, Union
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.controllers.base_controller import BaseController
@@ -25,6 +26,7 @@ class UserController(BaseController):
         """
         super().__init__(session)
         self.logger = logging.getLogger(self.__class__.__name__)
+
 
     def create(self, user_data: UserCreate, hashed_password: str) -> Optional[UserResponse]:
         """
@@ -53,16 +55,18 @@ class UserController(BaseController):
         self.session.refresh(new_user)
         return UserResponse.model_validate(new_user)
 
-    def get_by_id(self, user_id: str) -> Optional[UserResponse]:
+    def get_by_id(self, user_id: UUID) -> Optional[UserResponse]:
         """
         Obtiene un usuario por su ID.
 
         Args:
-            user_id (str): ID del usuario.
+            user_id (UUID): ID del usuario.
 
         Returns:
             Optional[UserResponse]: El esquema de respuesta o None.
         """
+        user_id = self._validate_uudi(user_id)
+
         # Usamos el método heredado de BaseController
         user_db = self._get_item_by_id(UsersDatabaseModel, user_id)
         if user_db:
@@ -83,17 +87,18 @@ class UserController(BaseController):
             return UserResponse.model_validate(user_db)
         return None
     
-    def get_user_hash(self, user_id: str) -> Optional[Dict[str,str]]:
+    def get_user_hash(self, user_id: UUID) -> Optional[Dict[str,str]]:
         """
         Obtiene el hash de contraseña de un usuario por su ID.
 
         Args:
-            user_id (str): ID del usuario.
+            user_id (UUID): ID del usuario.
         
         Returns:
             Optional[Dict[str,str]]: Un diccionario con el ID del usuario y su hash de contraseña.
         """
         try:
+            user_id = self._validate_uudi(user_id)
             stmt = select(UsersDatabaseModel.password_hash).where(UsersDatabaseModel.id == user_id)
             password_hash = self.session.execute(stmt).scalar_one_or_none()
             return {
@@ -141,17 +146,18 @@ class UserController(BaseController):
             users=[UserResponse.model_validate(user) for user in users_db]
         )
 
-    def update_user(self, user_id: str, update_data: UserUpdate) -> Optional[UserResponse]:
+    def update_user(self, user_id: UUID, update_data: UserUpdate) -> Optional[UserResponse]:
         """
         Actualiza la data de un usuario ya existente.
 
         Args:
-            user_id (str): ID del usuario.
+            user_id (UUID): ID del usuario.
             update_data (UserUpdate): Datos de actualización del usuario.
 
         Returns:
             Optional[UserResponse]: El esquema de respuesta o None.
         """
+        user_id = self._validate_uudi(user_id)
         user_db = self._get_item_by_id(UsersDatabaseModel, user_id)
         if not user_db:
             self.logger.warning(f"User with ID {user_id} not found for update.")
@@ -167,17 +173,18 @@ class UserController(BaseController):
         self.session.refresh(user_db)
         return UserResponse.model_validate(user_db)
 
-    def update_user_password(self, user_id: str, hashed_password: str) -> bool:
+    def update_user_password(self, user_id: UUID, hashed_password: str) -> bool:
         """
         Actualiza la contraseña de un usuario existente.
 
         Args:
-            user_id (str): ID del usuario.
+            user_id (UUID): ID del usuario.
             hashed_password (str): Hash de la contraseña.
 
         Returns:
             bool: True si la actualización fue exitosa, False en caso contrario.
         """
+        user_id = self._validate_uudi(user_id)
         user_db = self._get_item_by_id(UsersDatabaseModel, user_id)
         if not user_db:
             self.logger.warning(f"User with ID {user_id} not found for password update.")
@@ -191,16 +198,17 @@ class UserController(BaseController):
         
         return True
     
-    def delete_user(self, user_id: str) -> bool:
+    def delete_user(self, user_id: UUID) -> bool:
         """
         Elimina un usuario por su ID. Elimina sólo de la base de datos.
 
         Args:
-            user_id (str): ID del usuario.
+            user_id (UUID): ID del usuario.
 
         Returns:
             bool: True si la eliminación fue exitosa, False en caso contrario.
         """
+        user_id = self._validate_uudi(user_id)
         user_db = self._get_item_by_id(UsersDatabaseModel, user_id)
         if not user_db:
             self.logger.warning(f"User with ID {user_id} not found for deletion.")

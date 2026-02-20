@@ -70,6 +70,7 @@ class PhotoController(BaseController):
         Returns:
             Optional[PhotoResponse]: El esquema de respuesta o None.
         """
+        photo_id = self._validate_uudi(photo_id)
         photo_db = self._get_item_by_id(PhotoDatabaseModel, photo_id)
         if photo_db:
             return PhotoResponse.model_validate(photo_db)
@@ -87,6 +88,7 @@ class PhotoController(BaseController):
         Returns:
             PhotoResponseList: Objeto con la lista de fotos y el total.
         """
+        user_id = self._validate_uudi(user_id)
         stmt = (
             select(PhotoDatabaseModel)
             .where(PhotoDatabaseModel.user_id == user_id)
@@ -113,6 +115,7 @@ class PhotoController(BaseController):
         Returns:
             Optional[AlbumDatabaseModel]: El modelo del álbum creado o None.
         """
+        user_id = self._validate_uudi(user_id)
         new_album = AlbumDatabaseModel(user_id=user_id, name=album_name)
         if not self._commit_or_rollback(new_album):
             return None
@@ -129,6 +132,7 @@ class PhotoController(BaseController):
         Returns:
             Optional[AlbumResponse]: El esquema de respuesta o None.
         """
+        album_id = self._validate_uudi(album_id)
         album_db = self._get_item_by_id(AlbumDatabaseModel, album_id)
         if album_db:
             return AlbumResponse.model_validate(album_db)
@@ -144,6 +148,7 @@ class PhotoController(BaseController):
         Returns:
             List[AlbumResponse]: Lista de álbumes.
         """
+        user_id = self._validate_uudi(user_id)
         stmt = (
             select(AlbumDatabaseModel)
             .where(AlbumDatabaseModel.user_id == user_id)
@@ -163,6 +168,9 @@ class PhotoController(BaseController):
         Returns:
             bool: True si la operación fue exitosa, False en caso contrario.
         """
+        photo_id = self._validate_uudi(photo_id)
+        album_id = self._validate_uudi(album_id)
+
         try:
             photo = self.session.get(PhotoDatabaseModel, photo_id)
             album = self.session.get(AlbumDatabaseModel, album_id)
@@ -187,6 +195,7 @@ class PhotoController(BaseController):
         Returns:
             bool: True si la eliminación fue exitosa, False en caso contrario.
         """
+        photo_id = self._validate_uudi(photo_id)
         photo_db = self._get_item_by_id(PhotoDatabaseModel, photo_id)
         if not photo_db:
             return False
@@ -202,6 +211,7 @@ class PhotoController(BaseController):
         Returns:
             bool: True si la eliminación fue exitosa, False en caso contrario.
         """
+        album_id = self._validate_uudi(album_id)
         album_db = self._get_item_by_id(AlbumDatabaseModel, album_id)
         if not album_db:
             return False

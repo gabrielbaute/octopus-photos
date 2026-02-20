@@ -2,9 +2,10 @@
 Controlador base con métodos comunes a todos los controladores.
 """
 import logging
-from typing import Any, Optional, Type
+from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from typing import Any, Optional, Type, Union
 
 class BaseController:
     """
@@ -108,3 +109,18 @@ class BaseController:
         """
         self.session.close()
         self.logger.debug("Database session closed.")
+
+    def _validate_uudi(self, uuid_str: Union[str, UUID]) -> UUID:
+        """
+        Helper para validar que una ID sea en efecto de tipo UUID.
+
+        Args:
+            uuid_str (Union[str, UUID]): ID en string o UUID.
+
+        Returns:
+            UUID: ID en formato UUID.
+        """
+        if isinstance(uuid_str, str):
+            return UUID(uuid_str)
+        else:
+            return uuid_str

@@ -32,8 +32,7 @@ class StorageController(BaseController):
         Returns:
             Optional[UserStorage]: El esquema de respuesta o None.
         """
-        if isinstance(user_id, str):
-            user_id = UUID(user_id)
+        user_id = self._validate_uudi(user_id)
         
         new_storage = UserStorageDatabaseModel(
             user_id=user_id,
@@ -58,8 +57,7 @@ class StorageController(BaseController):
         Returns:
             bool: True si la actualización fue exitosa, False en caso contrario.
         """
-        if isinstance(user_id, str):
-            user_id = UUID(user_id)
+        user_id = self._validate_uudi(user_id)
             
         try:
             stmt = select(UserStorageDatabaseModel).where(UserStorageDatabaseModel.user_id == user_id)
@@ -85,8 +83,7 @@ class StorageController(BaseController):
         Returns:
             UserStorage: El esquema de respuesta.
         """
-        if isinstance(user_id, str):
-            user_id = UUID(user_id)
+        user_id = self._validate_uudi(user_id)
         
         stmt = select(UserStorageDatabaseModel).where(UserStorageDatabaseModel.user_id == user_id)
         uses_storage = self.session.execute(stmt).scalar_one_or_none()
