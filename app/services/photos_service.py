@@ -95,7 +95,7 @@ class PhotosService:
             metadata = self.metadata_service.extract_metadata(target_path)
 
             photo_data = PhotoCreate(
-                file_name=target_path.name,
+                file_name=filename,
                 description=description,
                 **metadata.model_dump()
             )
