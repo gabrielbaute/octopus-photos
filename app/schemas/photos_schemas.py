@@ -118,3 +118,20 @@ class PhotoResponseList(BaseModel):
             ]
         }
     )
+
+class PhotoBulkAction(BaseModel):
+    photo_ids: List[UUID]
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "photo_ids": [
+                        "xxxx-xxxx-xxxx-xxxx",
+                        "xxxx-xxxx-xxxx-xxxx",
+                        "xxxx-xxxx-xxxx-xxxx"
+                    ]
+                }
+            ]
+        }
+    )

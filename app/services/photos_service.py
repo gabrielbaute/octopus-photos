@@ -121,7 +121,6 @@ class PhotosService:
             self.logger.error(f"Fallo crítico en upload: {str(e)}")
             raise OctopusError(f"Fallo crítico en upload: {str(e)}")
     
-
     def create_album(self, user_id: UUID, album_name: str) -> Optional[AlbumResponse]:
         """
         Crea un nuevo álbum para un usuario.
@@ -225,6 +224,7 @@ class PhotosService:
             Optional[PhotoResponse]: El esquema de respuesta o None.
         """
         return self.photo_controller.update_photo(photo_id, photo_update)
+    
     # =========== MÉTODOS DELETE ===========
     def delete_photo(self, photo_id: UUID, requester_id: UUID) -> bool:
         """
