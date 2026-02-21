@@ -58,7 +58,7 @@ async def upload_photo(
 
 # =========== RUTAS DE CONSULTA ===========
 
-@router.get("/", response_model=PhotoResponseList)
+@router.get("/me", response_model=PhotoResponseList)
 async def get_my_photos(
     skip: int = 0,
     limit: int = 100,
