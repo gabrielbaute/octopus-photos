@@ -7,12 +7,12 @@ from typing import Optional, List
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.schemas import AlbumResponse, AlbumCreate
 from app.controllers.base_controller import BaseController
 from app.errors import OctopusError, ResourceNotFoundError
 from app.database.models.associations import album_photos
 from app.database.models.photos_model import PhotoDatabaseModel
 from app.database.models.albums_model import AlbumDatabaseModel
+from app.schemas import AlbumResponse, AlbumCreate, AlbumListResponse, AlbumUpdate
 
 class AlbumController(BaseController):
     """
@@ -77,7 +77,7 @@ class AlbumController(BaseController):
             return AlbumResponse.model_validate(album_db)
         return None
 
-    def get_user_albums(self, user_id: UUID) -> List[AlbumResponse]:
+    def get_user_albums(self, user_id: UUID) -> AlbumListResponse:
         """
         Recupera todos los álbumes de un usuario.
 
@@ -85,7 +85,7 @@ class AlbumController(BaseController):
             user_id (UUID): ID del propietario.
 
         Returns:
-            List[AlbumResponse]: Lista de álbumes.
+            AlbumListResponse: Objeto con la lista de álbumes y el total.
         """
         user_id = self._validate_uudi(user_id)
         stmt = (
@@ -94,7 +94,31 @@ class AlbumController(BaseController):
             .options(selectinload(AlbumDatabaseModel.photos))
         )
         albums_db = self.session.execute(stmt).scalars().all()
-        return [AlbumResponse.model_validate(a) for a in albums_db]
+        return AlbumListResponse(count=len(albums_db), albums=[AlbumResponse.model_validate(a) for a in albums_db])
+
+    def update_album(self, album_id: UUID, album_update: AlbumUpdate) -> Optional[AlbumResponse]:
+        """
+        Actualiza la metadata de un album de fotos
+
+        Args:
+            album_id (UUID): ID del álbum.
+            album_update (AlbumUpdate): Datos actualizados.
+        
+        Returns:
+            Optional[AlbumResponse]: El esquema de respuesta o None.
+        """
+        album_id = self._validate_uudi(album_id)
+        album = self.session.get(AlbumDatabaseModel, album_id)
+        if not album:
+            return None
+
+        for key, value in album_update.model_dump(exclude_unset=True).items():
+            setattr(album, key, value)
+
+        if not self._commit_or_rollback(album):
+            return None
+        self.session.refresh(album)
+        return AlbumResponse.model_validate(album)
 
     def add_photo_to_album(self, photo_id: UUID, album_id: UUID) -> bool:
         """
