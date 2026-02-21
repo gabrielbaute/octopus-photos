@@ -50,12 +50,12 @@ def change_password(
     """
     # 1. Verificar la contraseña actual
     # Necesitamos el hash de la DB (el esquema UserResponse no lo trae por seguridad)
-    user_db = user_service.user_controller._get_item_by_id(
-        user_service.user_controller.model_class, current_user.id
-    )
+    user_db = user_service.user_controller.get_user_hash(current_user.id)
+    if not user_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
     security = SecurityService()
-    if not security.verify_password(data.current_password, user_db.password_hash):
+    if not security.verify_password(data.current_password, user_db["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="La contraseña actual es incorrecta"
