@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
 
 from app.schemas.photos_schemas import PhotoResponseList
@@ -62,3 +62,18 @@ class AlbumResponse(BaseModel):
             ]
         }
     )
+
+class AlbumCreate(BaseModel):
+    """
+    Modelo para crear un álbum.
+
+    Args:
+        user_id (UUID): ID del propietario.
+        name (str): Nombre del album
+        description (Optional[str]): Descripción del álbum.
+        photos Optional[PhotoResponseList]: Lista de fotos en el álbum en caso de crearlo a partir de una lsita.
+    """
+    user_id: UUID
+    name: str
+    description: Optional[str] = None
+    photos: List[UUID] = []
