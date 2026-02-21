@@ -106,7 +106,7 @@ class AlbumCreate(BaseModel):
         user_id (UUID): ID del propietario.
         name (str): Nombre del album
         description (Optional[str]): Descripción del álbum.
-        photos Optional[PhotoResponseList]: Lista de fotos en el álbum en caso de crearlo a partir de una lsita.
+        photos List[UUID]: Lista de fotos en el álbum en caso de crearlo a partir de una lsita.
     """
     user_id: UUID
     name: str
@@ -129,7 +129,6 @@ class AlbumCreate(BaseModel):
             ]
         }
     )
-
 
 class AlbumUpdate(BaseModel):
     """
