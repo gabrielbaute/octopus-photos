@@ -63,6 +63,41 @@ class AlbumResponse(BaseModel):
         }
     )
 
+class AlbumListResponse(BaseModel):
+    """
+    Modelo de respuesta para una lista de álbumes.
+
+    Args:
+        count (int): Número total de álbumes.
+        albums (List[AlbumResponse]): Lista de álbumes.
+    """
+    count: int
+    albums: List[AlbumResponse]
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples":[
+                {
+                    "count": 10,
+                    "albums": [
+                        {
+                            "id": "xxxx-xxxx-xxxx-xxxx",
+                            "user_id": "xxxx-xxxx-xxxx-xxxx",
+                            "name": "Mi álbum",
+                            "description": "Descripción del álbum",
+                            "created_at": "2023-01-01T00:00:00",
+                            "photos": {
+                                "count": 10,
+                                "photos": []
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    )
+
 class AlbumCreate(BaseModel):
     """
     Modelo para crear un álbum.
@@ -77,3 +112,45 @@ class AlbumCreate(BaseModel):
     name: str
     description: Optional[str] = None
     photos: List[UUID] = []
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples":[
+                {
+                    "user_id": "xxxx-xxxx-xxxx-xxxx",
+                    "name": "Mi álbum",
+                    "description": "Descripción del álbum",
+                    "photos": [
+                        "xxxx-xxxx-xxxx-xxxx",
+                        "xxxx-xxxx-xxxx-xxxx"
+                    ]
+                }
+            ]
+        }
+    )
+
+
+class AlbumUpdate(BaseModel):
+    """
+    Modelo para actualizar un álbum.
+
+    Args:
+        name (str): Nombre del album
+        description (Optional[str]): Descripción del álbum.
+    """
+    name: str
+    description: Optional[str] = None
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples":[
+                {
+                    "name": "Mi álbum",
+                    "description": "Descripción del álbum"
+                }
+            ]
+        }
+    
+    )
