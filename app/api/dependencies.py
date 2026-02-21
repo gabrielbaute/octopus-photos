@@ -1,9 +1,9 @@
 """
 Dependencias para inyectar en la API
 """
-from typing import Generator
 from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status
+from typing import Generator, Optional
+from fastapi import HTTPException, status, Query, Depends
 from fastapi.security import OAuth2PasswordBearer
 
 from app.enums import UserRole
@@ -20,7 +20,7 @@ from app.services.security_service import SecurityService
 
 
 # OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 # --- Proveedores de Servicios ---
 
@@ -49,34 +49,54 @@ def get_photos_service(db: Session = Depends(get_db)) -> PhotosService:
 # --- Dependencias de Seguridad y Usuario ---
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme), 
+    token_header: Optional[str] = Depends(oauth2_scheme),
+    token_query: Optional[str] = Query(None, alias="token"),
     user_service: UserService = Depends(get_user_service)
 ) -> UserResponse:
     """
-    Valida el token JWT y retorna el usuario actual.
+    Valida el token JWT (extraído de Header o Query Param) y retorna el usuario actual.
+
+    Esta implementación permite que recursos multimedia (como <img>) puedan
+    autenticarse pasando el token en la URL, manteniendo la compatibilidad 
+    con el estándar OAuth2 para el resto de la API.
 
     Args:
-        token (str): Token JWT.
-        user_service (UserService): servicio de usuario para getionar la entidad de usuario.
-    
+        token_header (Optional[str]): Token extraído del header Authorization.
+        token_query (Optional[str]): Token extraído del parámetro de consulta 'token'.
+        user_service (UserService): Servicio para la gestión de la entidad de usuario.
+
     Returns:
-        UserResponse: Usuario actual.
-    
+        UserResponse: Objeto del usuario autenticado y activo.
+
     Raises:
-        HTTPException: Si el token no es válido o el usuario no existe.
+        HTTPException: 401 si el token no existe o es inválido, 
+                        403 si el usuario está desactivado.
     """
+    # 1. Priorizar el header, pero caer al query param si es necesario
+    token = token_header or token_query
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No se proporcionaron credenciales de autenticación",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
-        # 1. Decodificar el token
+        # 2. Decodificar el token usando el SecurityService
         security_service = SecurityService()
-        token_data: TokenData = security_service.decode_token(token, expected_scope="access")
+        token_data: TokenData = security_service.decode_token(
+            token, 
+            expected_scope="access"
+        )
         
-        # 2. Buscar usuario (usamos el servicio inyectado)
+        # 3. Recuperar usuario desde la base de datos
         user = user_service.user_controller.get_by_id(token_data.user_id)
         
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Credenciales de usuario no válidas o usuario inexistente",
+                detail="Credenciales no válidas o usuario inexistente",
             )
             
         if not user.is_active:
