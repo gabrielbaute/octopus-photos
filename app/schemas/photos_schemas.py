@@ -33,15 +33,15 @@ class PhotoUpdate(BaseModel):
 
 class PhotoResponse(PhotoBase, PhotoMetadata):
     """
-    Modelo de respuesta completo. 
-    Hereda tanto de PhotoBase como de PhotoMetadata para aplanar la respuesta 
-    y que coincida con los atributos del modelo de SQLAlchemy.
+    Modelo de respuesta completo. Hereda tanto de PhotoBase como de PhotoMetadata para aplanar la respuesta y que coincida con los atributos del modelo de SQLAlchemy.
     """
     id: UUID
     user_id: UUID
     storage_date: datetime
     storage_path: str
     file_name: str
+    is_deleted: bool
+    deleted_at: Optional[datetime] = Field(None)
     
     model_config = ConfigDict(
         from_attributes=True,
@@ -55,6 +55,8 @@ class PhotoResponse(PhotoBase, PhotoMetadata):
                     "file_name": "photo.jpg",
                     "description": "Descripción de la foto",
                     "tags": ["tag1", "tag2"],
+                    "is_deleted": False,
+                    "deleted_at": None,
                     "date_taken": "2023-01-01T00:00:00",
                     "camera_make": "Canon",
                     "camera_model": "Canon EOS 5D Mark IV",
@@ -120,6 +122,12 @@ class PhotoResponseList(BaseModel):
     )
 
 class PhotoBulkAction(BaseModel):
+    """
+    Esquema para acciones en lote
+
+    Args:
+        photo_ids (List[UUID]): Lista de IDs de las fotos a operar.
+    """
     photo_ids: List[UUID]
 
     model_config = ConfigDict(
