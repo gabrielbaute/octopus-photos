@@ -90,7 +90,14 @@ class PhotosService:
             return False
 
     # =========== METODOS PARA SUBIR/CREAR ===========
-    def upload_photo(self, user_id: UUID, file_stream: BinaryIO, filename: str, description: Optional[str] = None) -> PhotoResponse:
+    def upload_photo(
+            self, 
+            user_id: UUID, 
+            file_stream: BinaryIO, 
+            filename: str, 
+            description: Optional[str] = None, 
+            tags: Optional[List[str]] = None
+        ) -> PhotoResponse:
         """
         Sube una foto al servidor desde la API y en stream.
 
@@ -99,6 +106,7 @@ class PhotosService:
             file_stream (BinaryIO): El objeto de flujo binario del archivo.
             filename (str): Nombre original del archivo.
             description (Optional[str]): Descripción opcional.
+            tags (Optional[List[str]]): Lista de etiquetas.
 
         Returns:
             PhotoResponse: El esquema de respuesta.
@@ -127,6 +135,7 @@ class PhotosService:
             photo_data = PhotoCreate(
                 file_name=filename,
                 description=description,
+                tags=tags,
                 **metadata.model_dump()
             )
 
