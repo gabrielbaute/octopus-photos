@@ -31,8 +31,8 @@ def run_server():
         "main:app",
         host=settings.API_HOST,
         port=settings.API_PORT,
-        log_level="info",
-        reload=False,
+        log_level=settings.API_LOG_LEVEL,
+        reload=settings.API_RELOAD,
     )
 
 if __name__ == "__main__":
