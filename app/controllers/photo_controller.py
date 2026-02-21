@@ -13,7 +13,7 @@ from app.errors import OctopusError, ResourceNotFoundError
 from app.database.models.associations import album_photos
 from app.database.models.photos_model import PhotoDatabaseModel
 from app.database.models.albums_model import AlbumDatabaseModel
-from app.schemas import PhotoCreate, PhotoResponse, PhotoResponseList, AlbumResponse, PhotoUpdate
+from app.schemas import PhotoCreate, PhotoResponse, PhotoResponseList, AlbumResponse, AlbumCreate, PhotoUpdate
 
 class PhotoController(BaseController):
     """
@@ -113,19 +113,18 @@ class PhotoController(BaseController):
             photos=[PhotoResponse.model_validate(p) for p in photos_db]
         )
     
-    def create_album(self, user_id: UUID, album_name: str) -> Optional[AlbumResponse]:
+    def create_album(self, new_album_data: AlbumCreate) -> Optional[AlbumResponse]:
         """
         Crea un nuevo álbum para un usuario.
 
         Args:
-            user_id (UUID): ID del propietario.
-            album_name (str): Nombre del álbum.
+            new_album_data (AlbumCreate): Datos del nuevo álbum.
 
         Returns:
             Optional[AlbumDatabaseModel]: El modelo del álbum creado o None.
         """
-        user_id = self._validate_uudi(user_id)
-        new_album = AlbumDatabaseModel(user_id=user_id, name=album_name)
+        user_id = self._validate_uudi(new_album_data.user_id)
+        new_album = AlbumDatabaseModel(user_id=user_id, name=new_album_data.name, description=new_album_data.description)
         if not self._commit_or_rollback(new_album):
             return None
         self.session.refresh(new_album)
