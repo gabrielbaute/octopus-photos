@@ -1,3 +1,4 @@
 from app.controllers.user_controller import UserController
 from app.controllers.storage_controller import StorageController
 from app.controllers.photo_controller import PhotoController
+from app.controllers.album_controller import AlbumController
