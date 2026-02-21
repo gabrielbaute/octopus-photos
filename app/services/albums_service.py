@@ -7,8 +7,8 @@ from typing import Optional, List
 from sqlalchemy.orm import Session
 
 from app.services.users_service import UserService
-from app.services.storage_service import StorageService
 from app.controllers.album_controller import AlbumController
+from app.controllers.photo_controller import PhotoController
 from app.errors import ResourceNotFoundError, PermissionDeniedError
 from app.schemas import AlbumResponse, AlbumCreate, AlbumListResponse, AlbumUpdate
 
@@ -22,7 +22,7 @@ class AlbumsService:
         
         # Encapsulamiento de dependencias
         self.album_controller = AlbumController(session)
-        self.storage_service = StorageService(session)
+        self.photo_controller = PhotoController(session)
         self.user_service = UserService(session)
     
     # =========== MÉTODOS PRIVADOS ===========
@@ -41,6 +41,27 @@ class AlbumsService:
             return True
         
         return self.album_controller.is_album_owner(album_id, user_id)
+    
+    def _validate_photo_ownership(self, photo_ids: List[UUID], user_id: UUID) -> bool:
+        """
+        Verifica que una o varias fotos pertenezcan a un usuario.
+        
+        Args:
+            photo_ids (List[UUID]): Lista de IDs a verificar.
+            user_id (UUID): ID del usuario propietario.
+            
+        Returns:
+            bool: True si las fotos pertenecen al usuario, False en caso contrario.
+        """
+        if self.user_service._is_user_admin(user_id):
+            return True
+        
+        # Obtenemos solo las que sí le pertenecen
+        owned_ids = self.photo_controller.filter_owned_photos(photo_ids, user_id)
+        
+        # RIGOR: El número de fotos encontradas debe coincidir con el solicitado
+        # Si pides 5 y el filtro devuelve 3, significa que hay 2 que no te pertenecen.
+        return len(owned_ids) == len(photo_ids)
 
     # =========== METODOS PARA AGREGAR/CREAR ===========
     def create_album(self, new_album_data: AlbumCreate) -> Optional[AlbumResponse]:
@@ -144,7 +165,7 @@ class AlbumsService:
         """
         return self.album_controller.add_photo_to_album(photo_id, album_id)
 
-    def add_photos_to_album(self, photo_ids: List[UUID], album_id: UUID, requester_id: UUID) -> bool:
+    def add_several_photos_to_album(self, photo_ids: List[UUID], album_id: UUID, requester_id: UUID) -> bool:
         """
         Relaciona múltiples fotos con un álbum en una sola transacción.
 
@@ -156,15 +177,16 @@ class AlbumsService:
         Returns:
             bool: True si la operación fue exitosa.
         """
-        # 1. Validar propiedad de las fotos (usando nuestro nuevo método)
-        valid_photo_ids = self._validate_ownership(photo_ids, requester_id)
-
-        # 2. Validar propiedad del álbum 
-        if not self.album_controller.is_album_owner(album_id, requester_id):
+        # 1. Verificamos que el requester_id es en efecto el propietario del album
+        if not self._validate_ownership(album_id, requester_id):
              raise PermissionDeniedError(message="No eres el propietario del álbum.")
 
+        # 2. Verificamos que todas las fotos que quiere agregar son, en efecto, fotos del requester_id
+        if not self._validate_photo_ownership(photo_ids, requester_id):
+            raise PermissionDeniedError("Una o varias fotos no pertenecen al usuario.")
+        
         # 3. Delegar la operación masiva al controlador
-        return self.album_controller.add_several_photos_to_album(valid_photo_ids, album_id)
+        return self.album_controller.add_several_photos_to_album(photo_ids, album_id)
 
     # =========== MÉTODOS DELETE ===========
     def remove_photo_from_album(self, photo_id: UUID, album_id: UUID) -> AlbumResponse:
