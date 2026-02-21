@@ -12,8 +12,8 @@ from app.services.users_service import UserService
 from app.services.storage_service import StorageService
 from app.services.metadata_service import MetadataService
 from app.controllers.photo_controller import PhotoController
-from app.schemas import PhotoCreate, PhotoResponse, AlbumResponse, PhotoResponseList, PhotoUpdate
 from app.errors import ValidationError, ResourceNotFoundError, PermissionDeniedError, OctopusError
+from app.schemas import PhotoCreate, PhotoResponse, AlbumResponse, AlbumCreate, PhotoResponseList, PhotoUpdate
 
 class PhotosService:
     """
@@ -160,18 +160,17 @@ class PhotosService:
             self.logger.error(f"Fallo crítico en upload: {str(e)}")
             raise OctopusError(f"Fallo crítico en upload: {str(e)}")
     
-    def create_album(self, user_id: UUID, album_name: str) -> Optional[AlbumResponse]:
+    def create_album(self, new_album_data: AlbumCreate) -> Optional[AlbumResponse]:
         """
         Crea un nuevo álbum para un usuario.
 
         Args:
-            user_id (UUID): ID del propietario.
-            album_name (str): Nombre del álbum.
+            new_album_data (AlbumCreate): Datos del nuevo álbum.
 
         Returns:
             Optional[AlbumResponse]: El esquema de respuesta o None.
         """
-        return self.photo_controller.create_album(user_id, album_name)
+        return self.photo_controller.create_album(new_album_data)
 
     def add_photo_to_album(self, photo_id: UUID, album_id: UUID) -> bool:
         """
