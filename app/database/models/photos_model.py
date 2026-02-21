@@ -22,18 +22,20 @@ class PhotoDatabaseModel(Base):
     file_name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=True)
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(default=False)
+    deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
     # Metadatos
     date_taken: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     camera_make: Mapped[str] = mapped_column(String, nullable=True)
     camera_model: Mapped[str] = mapped_column(String, nullable=True)
-    focal_length: Mapped[float] = mapped_column(Integer, nullable=True)
-    iso: Mapped[float] = mapped_column(Integer, nullable=True)
-    exposure_time: Mapped[float] = mapped_column(Integer, nullable=True)
-    aperture: Mapped[float] = mapped_column(Integer, nullable=True)
-    shutter_speed: Mapped[float] = mapped_column(Integer, nullable=True)
-    latitude: Mapped[float] = mapped_column(Integer, nullable=True)
-    longitude: Mapped[float] = mapped_column(Integer, nullable=True)
+    focal_length: Mapped[float] = mapped_column(nullable=True)
+    iso: Mapped[float] = mapped_column(nullable=True)
+    exposure_time: Mapped[float] = mapped_column(nullable=True)
+    aperture: Mapped[float] = mapped_column(nullable=True)
+    shutter_speed: Mapped[float] = mapped_column(nullable=True)
+    latitude: Mapped[float] = mapped_column(nullable=True)
+    longitude: Mapped[float] = mapped_column(nullable=True)
 
     # Relación con User
     user: Mapped["UsersDatabaseModel"] = relationship(back_populates="photos")
