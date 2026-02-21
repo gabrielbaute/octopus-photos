@@ -15,7 +15,7 @@ from app.schemas import UserResponse, TokenData
 from app.services.mail_service import MailService
 from app.services.users_service import UserService
 from app.services.photos_service import PhotosService
-from app.services.albums_service import AlbumsService
+from app.services.albums_service import AlbumService
 from app.services.storage_service import StorageService
 from app.services.security_service import SecurityService
 
@@ -69,17 +69,17 @@ def get_photos_service(db: Session = Depends(get_db)) -> PhotosService:
     """
     return PhotosService(db)
 
-def get_albums_service(db: Session = Depends(get_db)) -> AlbumsService:
+def get_albums_service(db: Session = Depends(get_db)) -> AlbumService:
     """
-    Provee AlbumsService.
+    Provee AlbumService.
 
     Args:
         db (Session): Sesión de la base de datos.
         
     Returns:
-        AlbumsService: Instancia de AlbumsService.
+        AlbumService: Instancia de AlbumService.
     """
-    return AlbumsService(db)
+    return AlbumService(db)
 
 # ============ Dependencias de Seguridad y Usuario ============
 

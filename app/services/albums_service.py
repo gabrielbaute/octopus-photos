@@ -12,7 +12,7 @@ from app.controllers.photo_controller import PhotoController
 from app.errors import ResourceNotFoundError, PermissionDeniedError
 from app.schemas import AlbumResponse, AlbumCreate, AlbumListResponse, AlbumUpdate
 
-class AlbumsService:
+class AlbumService:
     """
     Servicio de alto nivel para el ciclo de vida de los álbumes.
     """
@@ -76,17 +76,30 @@ class AlbumsService:
         """
         return self.album_controller.create_album(new_album_data)
 
-    def add_photo_to_album(self, photo_id: UUID, album_id: UUID) -> bool:
+    def add_photo_to_album(self, photo_id: UUID, album_id: UUID, requester_id: UUID) -> bool:
         """
         Crea la relación N:N entre una foto y un álbum.
 
         Args:
             photo_id (UUID): ID de la foto.
             album_id (UUID): ID del álbum.
+            requester_id (UUID): ID del usuario que solicita la operación.
         
         Returns:
             bool: True si la operación fue exitosa, False en caso contrario.
         """
+        if not self._validate_ownership(album_id, requester_id):
+            raise PermissionDeniedError(
+                message="No eres el propietario del álbum.",
+                details={"album_id": str(album_id)}
+            )
+        
+        if not self._validate_photo_ownership([photo_id], requester_id):
+            raise PermissionDeniedError(
+                message="La foto no pertenece al usuario.",
+                details={"photo_id": str(photo_id)}
+            )
+
         return self.album_controller.add_photo_to_album(photo_id, album_id)
 
     def add_photos_to_album(self, photo_ids: List[UUID], album_id: UUID, requester_id: UUID) -> bool:
@@ -102,28 +115,40 @@ class AlbumsService:
             bool: True si la operación fue exitosa.
         """
         # 1. Validar propiedad de las fotos (usando nuestro nuevo método)
-        valid_photo_ids = self._validate_ownership(photo_ids, requester_id)
+        valid_photo_ids = self._validate_photo_ownership(photo_ids, requester_id)
+        if not valid_photo_ids:
+            raise PermissionDeniedError(
+                message="Una o varias fotos no pertenecen al usuario.",
+                details={"photo_ids": [str(photo_id) for photo_id in photo_ids]}
+            )
 
         # 2. Validar propiedad del álbum 
-        # Aquí lo ideal sería llamar a un AlbumService, pero si aún no existe,
-        # el controlador de fotos puede hacer la comprobación rápida.
         if not self.album_controller.is_album_owner(album_id, requester_id):
-             raise PermissionDeniedError(message="No eres el propietario del álbum.")
-
+             raise PermissionDeniedError(
+                 message="No eres el propietario del álbum.",
+                 details={"album_id": str(album_id)}
+                )
+            
         # 3. Delegar la operación masiva al controlador
-        return self.album_controller.add_several_photos_to_album(valid_photo_ids, album_id)
+        return self.album_controller.add_several_photos_to_album(photo_ids, album_id)
 
     # =========== MÉTODOS GET ===========
-    def get_album_by_id(self, album_id: UUID) -> Optional[AlbumResponse]:
+    def get_album_by_id(self, album_id: UUID, requester_id: UUID) -> Optional[AlbumResponse]:
         """
         Recupera un álbum por su ID.
 
         Args:
             album_id (UUID): ID del álbum.
+            requester_id (UUID): ID del usuario que solicita la operación.
         
         Returns:
             Optional[AlbumResponse]: El album y sus fotos o None.
         """
+        if not self._validate_ownership(album_id, requester_id):
+            raise PermissionDeniedError(
+                message="No tienes permiso para acceder a este recurso.",
+                details={"album_id": str(album_id)}
+            )
         return self.album_controller.get_album_by_id(album_id)
     
     def get_user_albums(self, user_id: UUID) -> AlbumListResponse:
@@ -139,30 +164,48 @@ class AlbumsService:
         return self.album_controller.get_user_albums(user_id)
     
     # =========== MÉTODOS PUT ===========
-    def update_album_metadata(self, album_id: UUID, album_update: AlbumUpdate) -> Optional[AlbumResponse]:
+    def update_album_metadata(self, album_id: UUID, album_update: AlbumUpdate, requester_id: UUID) -> Optional[AlbumResponse]:
         """
         Actualiza los metadatos de un álbum.
 
         Args:
             album_id (UUID): ID del álbum.
             album_update (AlbumUpdate): metadata actualizada
+            requester_id (UUID): ID del usuario que solicita la actualización.
         
         Returns:
             Optional[AlbumResponse]: Album actualizado o None.
         """
-        return self.album_controller.update_album(album_id, album_update)
+        if not self._validate_ownership(album_id, requester_id):
+            raise PermissionDeniedError(
+                message="No tienes permiso para modificar este álbum.",
+                details={"album_id": str(album_id)}
+            )
 
-    def add_photo_to_album(self, photo_id: UUID, album_id: UUID) -> bool:
+        updated_album = self.album_controller.update_album(album_id, album_update)
+        
+        if not updated_album:
+            raise ResourceNotFoundError(message="No se pudo encontrar el álbum para actualizar.")
+
+        return updated_album
+
+    def add_photo_to_album(self, photo_id: UUID, album_id: UUID, requester_id: UUID) -> bool:
         """
         Crea la relación N:N entre una foto y un álbum.
 
         Args:
             photo_id (UUID): ID de la foto.
             album_id (UUID): ID del álbum.
+            requester_id (UUID): ID del usuario que solicita la operación.
         
         Returns:
             bool: True si la operación fue exitosa, False en caso contrario.
         """
+        if not self._validate_ownership(album_id, requester_id):
+            raise PermissionDeniedError(
+                message="No tienes permiso para agregar fotos a este álbum.",
+                details={"album_id": str(album_id)}
+            )
         return self.album_controller.add_photo_to_album(photo_id, album_id)
 
     def add_several_photos_to_album(self, photo_ids: List[UUID], album_id: UUID, requester_id: UUID) -> bool:
@@ -189,30 +232,44 @@ class AlbumsService:
         return self.album_controller.add_several_photos_to_album(photo_ids, album_id)
 
     # =========== MÉTODOS DELETE ===========
-    def remove_photo_from_album(self, photo_id: UUID, album_id: UUID) -> AlbumResponse:
+    def remove_photo_from_album(self, photo_id: UUID, album_id: UUID, requester_id: UUID) -> AlbumResponse:
         """
         Quita una foto de un album pero sin eliminarla ni de la base de datos ni del almacenamiento.
 
         Args:
             photo_id (UUID): ID de la foto.
             album_id (UUID): ID del álbum.
+            requester_id (UUID): ID del usuario que solicita la eliminación.
 
         Returns:
             AlbumResponse: El objeto del album sin la foto removida.
         """
+        if not self._validate_ownership(album_id, requester_id):
+            raise PermissionDeniedError(
+                message="No tienes permiso para eliminar fotos de este álbum.",
+                details={"album_id": str(album_id)}
+            )
+        
         return self.album_controller.remove_photo_from_album(photo_id, album_id)
     
-    def remove_several_photos_from_album(self, photo_ids: List[UUID], album_id: UUID) -> bool:
+    def remove_several_photos_from_album(self, photo_ids: List[UUID], album_id: UUID, requester_id: UUID) -> bool:
         """
         Quita múltiples fotos de un album.
 
         Args:
             photo_ids (List[UUID]): Lista de IDs de las fotos.
             album_id (UUID): ID del álbum.
+            requester_id (UUID): ID del usuario que solicita la eliminación.
 
         Returns:
             bool: True si la operación fue exitosa.
         """
+        if not self._validate_ownership(album_id, requester_id):
+            raise PermissionDeniedError(
+                message="No tienes permiso para eliminar fotos de este álbum.",
+                details={"album_id": str(album_id)}
+            )
+        
         return self.album_controller.remove_several_photos_from_album(photo_ids, album_id)
     
     def delete_album(self, album_id: UUID, requester_id: UUID) -> bool:
@@ -253,4 +310,3 @@ class AlbumsService:
                 details={"album_id": str(album_id)}
             )
         return success
-
