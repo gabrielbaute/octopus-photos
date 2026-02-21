@@ -23,27 +23,34 @@ class AlbumController(BaseController):
         super().__init__(session)
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def create_album(self, new_album_data: AlbumCreate) -> Optional[AlbumResponse]:
+    def create_album(self, new_album_data: AlbumCreate, validated_photo_ids: List[UUID] = None) -> Optional[AlbumResponse]:
         """
         Crea un nuevo álbum para un usuario.
 
         Args:
             new_album_data (AlbumCreate): Datos del nuevo álbum.
+            validated_photo_ids (List[UUID]): Lista de IDs de fotos válidas.
 
         Returns:
             Optional[AlbumDatabaseModel]: El modelo del álbum creado o None.
         """
         user_id = self._validate_uudi(new_album_data.user_id)
-
+        
         new_album = AlbumDatabaseModel(
             user_id=user_id, 
             name=new_album_data.name, 
-            description=new_album_data.description,
-            photos=new_album_data.photos,
+            description=new_album_data.description
         )
+
+        # Si hay fotos, buscamos los objetos REALES de la sesión
+        if validated_photo_ids:
+            stmt = select(PhotoDatabaseModel).where(PhotoDatabaseModel.id.in_(validated_photo_ids))
+            photos_objs = self.session.execute(stmt).scalars().all()
+            new_album.photos = list(photos_objs)
         
         if not self._commit_or_rollback(new_album):
             return None
+            
         self.session.refresh(new_album)
         return AlbumResponse.model_validate(new_album)
 
