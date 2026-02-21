@@ -5,7 +5,7 @@ from uuid import UUID
 from pathlib import Path
 from typing import Optional, List
 from fastapi.responses import FileResponse
-from fastapi import APIRouter, Depends, UploadFile, File, Form, status, HTTPException
+from fastapi import APIRouter, UploadFile,status, HTTPException, File, Form, Query, Depends
 
 from app.enums import UserRole
 from app.errors import OctopusError
@@ -19,43 +19,42 @@ router = APIRouter(prefix="/photos", tags=["Photos"])
 async def upload_photo(
     file: UploadFile = File(...),
     description: Optional[str] = Form(None),
-    tags: Optional[str] = Form(None), # Los tags suelen venir como string separado por comas en FormData
+    # Cambiamos a List[str] para soportar el formato de v0/Axios
+    tags: Optional[List[str]] = Form(None), 
     current_user: UserResponse = Depends(get_current_user),
     photo_service: PhotosService = Depends(get_photos_service)
 ):
-    """
-    Sube una fotografía al servidor.
-    
-    Procesa el archivo binario, genera miniaturas, extrae metadatos y 
-    actualiza la cuota de almacenamiento del usuario.
-    """
     try:
-        # Convertimos los tags de string a lista si existen
-        tag_list = [tag.strip() for tag in tags.split(",")] if tags else []
+        # Procesamiento inteligente de tags
+        final_tags = []
+        if tags:
+            # Si v0 envía ["tag1", "tag2"], 'tags' ya es una lista.
+            # Si envía ["tag1, tag2"], lo aplanamos.
+            for t in tags:
+                final_tags.extend([item.strip() for item in t.split(",") if item.strip()])
 
-        # Ejecutamos la lógica de negocio
-        # Pasamos el file.file que es el objeto file-like (BinaryIO) que espera tu servicio
+        # Leemos el contenido para asegurarnos de que el stream esté disponible
+        contents = await file.read()
+        import io
+        file_stream = io.BytesIO(contents)
+
         photo = photo_service.upload_photo(
             user_id=current_user.id,
-            file_stream=file.file,
-            file_name=file.filename,
+            file_stream=file_stream, # Pasamos el buffer de memoria
+            filename=file.filename,
             description=description,
-            tags=tag_list
+            tags=final_tags
         )
         
         return photo
 
     except OctopusError as e:
-        # Capturamos errores de cuota llena, formato inválido, etc.
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=e.message
-        )
+        raise HTTPException(status_code=400, detail=e.message)
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno al procesar la imagen: {str(e)}"
-        )
+        # LOGGING CRÍTICO: Para saber qué falló realmente en el 500
+        import logging
+        logging.error(f"Error en upload: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno al procesar la imagen.")
     
 @router.get("/me", response_model=PhotoResponseList)
 async def get_my_photos(
