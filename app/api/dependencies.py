@@ -14,7 +14,7 @@ from app.mail import SMTPClient, MailBuilder
 from app.schemas import UserResponse, TokenData
 from app.services.mail_service import MailService
 from app.services.users_service import UserService
-from app.services.photos_service import PhotosService
+from app.services.photos_service import PhotoService
 from app.services.albums_service import AlbumService
 from app.services.storage_service import StorageService
 from app.services.security_service import SecurityService
@@ -57,17 +57,17 @@ def get_storage_service(db: Session = Depends(get_db)) -> StorageService:
     """
     return StorageService(db)
 
-def get_photos_service(db: Session = Depends(get_db)) -> PhotosService:
+def get_photos_service(db: Session = Depends(get_db)) -> PhotoService:
     """
-    Provee PhotosService.
+    Provee PhotoService.
 
     Args:
         db (Session): Sesión de la base de datos.
         
     Returns:
-        PhotosService: Instancia de PhotosService.
+        PhotoService: Instancia de PhotoService.
     """
-    return PhotosService(db)
+    return PhotoService(db)
 
 def get_albums_service(db: Session = Depends(get_db)) -> AlbumService:
     """
