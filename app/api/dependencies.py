@@ -1,10 +1,10 @@
 """
 Dependencias para inyectar en la API
 """
+from typing import Optional
 from sqlalchemy.orm import Session
-from typing import Generator, Optional
-from fastapi import HTTPException, status, Query, Depends
 from fastapi.security import OAuth2PasswordBearer
+from fastapi import HTTPException, status, Query, Depends
 
 from app.enums import UserRole
 from app.errors import OctopusError
@@ -15,15 +15,14 @@ from app.schemas import UserResponse, TokenData
 from app.services.mail_service import MailService
 from app.services.users_service import UserService
 from app.services.photos_service import PhotosService
+from app.services.albums_service import AlbumsService
 from app.services.storage_service import StorageService
 from app.services.security_service import SecurityService
-
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
-# --- Proveedores de Servicios ---
-
+# ============ Proveedores de Servicios ============
 def get_settings_instance() -> Settings:
     """Provee una instancia de Settings."""
     return settings
@@ -35,18 +34,54 @@ def get_mail_service() -> MailService:
     return MailService(client, builder, settings)
 
 def get_user_service(db: Session = Depends(get_db)) -> UserService:
-    """Provee una instancia de UserService con la sesión de DB inyectada."""
+    """
+    Provee una instancia de UserService con la sesión de DB inyectada.
+
+    Args:
+        db (Session): Sesión de la base de datos.
+
+    Returns:
+        UserService: Instancia de UserService.
+    """
     return UserService(db)
 
 def get_storage_service(db: Session = Depends(get_db)) -> StorageService:
-    """Provee StorageService."""
+    """
+    Provee StorageService.
+    
+    Args:
+        db (Session): Sesión de la base de datos.
+    
+    Returns:
+        StorageService: Instancia de StorageService.
+    """
     return StorageService(db)
 
 def get_photos_service(db: Session = Depends(get_db)) -> PhotosService:
-    """Provee PhotosService."""
+    """
+    Provee PhotosService.
+
+    Args:
+        db (Session): Sesión de la base de datos.
+        
+    Returns:
+        PhotosService: Instancia de PhotosService.
+    """
     return PhotosService(db)
 
-# --- Dependencias de Seguridad y Usuario ---
+def get_albums_service(db: Session = Depends(get_db)) -> AlbumsService:
+    """
+    Provee AlbumsService.
+
+    Args:
+        db (Session): Sesión de la base de datos.
+        
+    Returns:
+        AlbumsService: Instancia de AlbumsService.
+    """
+    return AlbumsService(db)
+
+# ============ Dependencias de Seguridad y Usuario ============
 
 def get_current_user(
     token_header: Optional[str] = Depends(oauth2_scheme),
