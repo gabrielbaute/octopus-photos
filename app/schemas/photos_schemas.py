@@ -67,7 +67,9 @@ class PhotoResponse(PhotoBase, PhotoMetadata):
     file_name: str
     is_deleted: bool
     deleted_at: Optional[datetime] = Field(None)
-    
+    is_encrypted: bool = Field(False)
+    encryption_salt: Optional[str] = Field(None)
+
     model_config = ConfigDict(
         from_attributes=True,
         json_schema_extra={
