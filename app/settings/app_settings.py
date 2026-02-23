@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "OctopusPhotos"
     APP_VERSION: str = __version__
     APP_URL: str = "http://localhost:8000"
+    TIMEZONE: str = "America/Caracas"
 
     # Directorios
     BASE_PATH: Path = Path.home() / f".{APP_NAME}"
