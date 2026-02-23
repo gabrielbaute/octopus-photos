@@ -18,7 +18,13 @@ class PhotoCreate(PhotoBase, PhotoMetadata):
     file_name: str
 
 class PhotoUpdate(BaseModel):
-    """Esquema para actualizar metadatos editables por el usuario."""
+    """
+    Esquema para actualizar metadatos editables por el usuario.
+    
+    Args:
+        description (Optional[str]): Nueva descripción.
+        tags (Optional[List[str]]): Nuevos tags.
+    """
     description: Optional[str] = Field(None, max_length=500)
     tags: Optional[List[str]] = Field(None)
 
@@ -34,6 +40,25 @@ class PhotoUpdate(BaseModel):
 class PhotoResponse(PhotoBase, PhotoMetadata):
     """
     Modelo de respuesta completo. Hereda tanto de PhotoBase como de PhotoMetadata para aplanar la respuesta y que coincida con los atributos del modelo de SQLAlchemy.
+
+    Args:
+        id (UUID): ID de la foto.
+        user_id (UUID): ID del propietario.
+        storage_date (datetime): Fecha de almacenamiento.
+        storage_path (str): Ruta final del archivo en el sistema de archivos.
+        file_name (str): Nombre del archivo.
+        is_deleted (bool): Flag para indicar si una foto ha sido borrada.
+        deleted_at (Optional[datetime]): Fecha de borrado.
+        date_taken (Optional[datetime]): Fecha de la foto.
+        camera_make (Optional[str]): Marca de la cámara.
+        camera_model (Optional[str]): Modelo de la cámara.
+        focal_length (Optional[float]): Longitud focal.
+        iso (Optional[int]): ISO.
+        exposure_time (Optional[float]): Tiempo de exposición.
+        aperture (Optional[float]): Apertura.
+        shutter_speed (Optional[float]): Velocidad de apertura.
+        latitude (Optional[float]): Latitud.
+        longitude (Optional[float]): Longitud.
     """
     id: UUID
     user_id: UUID
@@ -85,7 +110,13 @@ class PhotoResponse(PhotoBase, PhotoMetadata):
         return f"/api/v1/photos/{self.id}/thumbnail"
 
 class PhotoResponseList(BaseModel):
-    """Contenedor para respuestas paginadas o listados."""
+    """
+    Contenedor para respuestas paginadas o listados.
+
+    Args:
+        count (int): Cantidad de fotos obtenidas.
+        photos (List[PhotoResponse]): Lista de PhotoResponse con la metadata de cada foto.
+    """
     count: int
     photos: List[PhotoResponse]
     

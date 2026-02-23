@@ -9,10 +9,12 @@ class UserStorage(BaseModel):
     Modelo de respuesta para el almacenamiento de un usuario.
 
     Args:
+        id (UUID): ID del almacenamiento.
         user_id (UUID): ID del usuario.
         storage_path (Path): Ruta del directorio de almacenamiento.
         count_files (int): Número de archivos en el directorio de almacenamiento.
         storage_bytes_size (Optional[int]): Tamaño del almacenamiento en bytes.
+        created_at (Optional[datetime]): Fecha de creación del almacenamiento.
     """
     id: UUID = Field(..., description="ID del almacenamiento")
     user_id: UUID = Field(..., description="ID del usuario")
