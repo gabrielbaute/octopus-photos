@@ -3,8 +3,9 @@ Photo controller module for database CRUD operations.
 """
 import logging
 from uuid import UUID
+from datetime import date
 from typing import Optional, List
-from sqlalchemy import select, func
+from sqlalchemy import select, func, extract
 from sqlalchemy.orm import Session, selectinload
 
 from app.schemas.metadata_schemas import PhotoMetadata
@@ -94,6 +95,86 @@ class PhotoController(BaseController):
         if photo_db:
             return PhotoResponse.model_validate(photo_db)
         return None
+
+    def get_photos_this_day(self, user_id: UUID, target_date: date) -> PhotoResponseList:
+        """
+        Obtiene fotos de cualquier año que coincidan en mes y día.
+
+        Args:
+            user_id (UUID): ID del propietario.
+            target_date (date): Día en que fue tomada la foto, sin importar el año.
+        
+        Returns:
+            PhotoResponseList: Objeto con la lista de fotos y el total.
+        """
+        photos = self.session.execute(
+            select(PhotoDatabaseModel)
+            .where(
+                PhotoDatabaseModel.user_id == user_id,
+                PhotoDatabaseModel.is_deleted == False,
+                extract('month', PhotoDatabaseModel.date_taken) == target_date.month,
+                extract('day', PhotoDatabaseModel.date_taken) == target_date.day
+            )
+            .order_by(PhotoDatabaseModel.date_taken.desc())
+        ).scalars().all()
+        photos = [PhotoResponse.model_validate(p) for p in photos]
+        return PhotoResponseList(count=len(photos), photos=photos)
+
+    def get_by_range_date(
+        self, 
+        user_id: UUID, 
+        start_date: str, 
+        end_date: str,
+        include_deleted: bool = False
+    ) -> PhotoResponseList:
+        """
+        Obtiene una lista de fotos dentro de un rango de fechas.
+
+        Args:
+            user_id (UUID): ID del propietario.
+            start_date (str): Fecha inicial.
+            end_date (str): Fecha final.
+            include_deleted (bool): True para traer las fotos en papelera, false para no.
+        
+        Returns:
+            PhotoResponseList: Objeto con la lista de fotos y el total.
+        """
+        user_id = self._validate_uudi(user_id)
+        filters = [PhotoDatabaseModel.user_id == user_id]
+        if not include_deleted:
+            filters.append(PhotoDatabaseModel.is_deleted == False)
+        
+        stmt = (
+            select(PhotoDatabaseModel)
+            .where(*filters, PhotoDatabaseModel.storage_date.between(start_date, end_date))
+            .options(selectinload(PhotoDatabaseModel.albums))
+        )
+        photos_db = self.session.execute(stmt).scalars().all()
+
+        count_stmt = select(func.count()).select_from(PhotoDatabaseModel).where(*filters)
+        total = self.session.execute(count_stmt).scalar() or 0
+
+        return PhotoResponseList(count=total, photos=[PhotoResponse.model_validate(p) for p in photos_db])
+
+    def get_user_older_photo(self, user_id: UUID) -> Optional[PhotoResponse]:
+        """
+        Obtiene la foto más antigua de un usuario.
+
+        Args:
+            user_id (UUID): ID del propietario.
+        
+        Returns:
+            Optional[PhotoResponse]: El esquema de respuesta o None.
+        """
+        user_id = self._validate_uudi(user_id)
+        stmt = (
+            select(PhotoDatabaseModel)
+            .where(PhotoDatabaseModel.user_id == user_id)
+            .order_by(PhotoDatabaseModel.storage_date.asc())
+            .limit(1)
+        )
+        photo_db = self.session.execute(stmt).scalar()
+        return PhotoResponse.model_validate(photo_db) if photo_db else None
 
     def trash_photo(self, photo_id: UUID) -> bool:
         """
