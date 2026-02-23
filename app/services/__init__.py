@@ -1,4 +1,5 @@
 from app.services.metadata_service import MetadataService
+from app.services.memories_service import MemoriesService
 from app.services.security_service import SecurityService
 from app.services.storage_service import StorageService
 from app.services.albums_service import AlbumService
