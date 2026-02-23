@@ -24,6 +24,8 @@ class PhotoDatabaseModel(Base):
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=True)
     is_deleted: Mapped[bool] = mapped_column(default=False)
     deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    is_encrypted: Mapped[bool] = mapped_column(default=False)
+    encryption_salt: Mapped[str] = mapped_column(String, nullable=True)
 
     # Metadatos
     date_taken: Mapped[datetime] = mapped_column(DateTime, nullable=True)
