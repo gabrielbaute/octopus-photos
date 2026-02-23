@@ -8,9 +8,10 @@ from fastapi.responses import FileResponse
 from fastapi import APIRouter, status, HTTPException, UploadFile, Depends, File, Form
 
 from app.services.photos_service import PhotoService
-from app.api.dependencies import get_current_user, get_photos_service
+from app.services.memories_service import MemoriesService
+from app.api.dependencies import get_current_user, get_photos_service, get_memories_service
 from app.errors import OctopusError, PermissionDeniedError, ResourceNotFoundError
-from app.schemas import PhotoResponse, PhotoResponseList, PhotoUpdate, UserResponse
+from app.schemas import PhotoResponse, PhotoResponseList, PhotoUpdate, UserResponse, PhotosYearList
 
 router = APIRouter(prefix="/photos", tags=["Photos"])
 
@@ -73,6 +74,20 @@ async def get_my_photos(
         limit=limit, 
         include_deleted=include_deleted
     )
+
+@router.get("/memories", response_model=PhotosYearList)
+async def get_daily_memories(
+    current_user: UserResponse = Depends(get_current_user),
+    memories_service: MemoriesService = Depends(get_memories_service)
+):
+    """Obtiene recuerdos de 'Un día como hoy'."""
+    try:
+        photo = memories_service.get_user_memories(current_user.id)
+        return photo
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=e.message)
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=e.message)
 
 @router.get("/{photo_id}", response_model=PhotoResponse)
 async def get_photo(
