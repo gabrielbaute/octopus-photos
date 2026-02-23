@@ -17,6 +17,7 @@ from app.services.users_service import UserService
 from app.services.photos_service import PhotoService
 from app.services.albums_service import AlbumService
 from app.services.storage_service import StorageService
+from app.services.memories_service import MemoriesService
 from app.services.security_service import SecurityService
 
 # OAuth2 scheme
@@ -80,6 +81,18 @@ def get_albums_service(db: Session = Depends(get_db)) -> AlbumService:
         AlbumService: Instancia de AlbumService.
     """
     return AlbumService(db)
+
+def get_memories_service(db: Session = Depends(get_db)) -> MemoriesService:
+    """
+    Provee MemoriesService.
+
+    Args:
+        db (Session): Sesión de la base de datos.
+        
+    Returns:
+        MemoriesService: Instancia de MemoriesService.
+    """
+    return MemoriesService(settings, db)
 
 # ============ Dependencias de Seguridad y Usuario ============
 
