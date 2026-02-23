@@ -176,6 +176,33 @@ class PhotoController(BaseController):
         photo_db = self.session.execute(stmt).scalar()
         return PhotoResponse.model_validate(photo_db) if photo_db else None
 
+    def mark_as_encrypted(
+        self, 
+        photo_id: UUID, 
+        new_storage_path: str, 
+        salt: str
+    ) -> Optional[PhotoDatabaseModel]:
+        """
+        Actualiza el registro de la foto tras ser cifrada y movida al baúl.
+
+        Args:
+            photo_id (UUID): ID de la fotografía.
+            new_storage_path (str): Nueva ruta física dentro de 'vault/photos'.
+            salt (str): Salt hexadecimal utilizado para la derivación de la clave.
+        """
+        photo = self.session.query(PhotoDatabaseModel).filter(
+            PhotoDatabaseModel.id == photo_id
+        ).first()
+
+        if photo:
+            photo.is_encrypted = True
+            photo.storage_path = new_storage_path
+            photo.encryption_salt = salt
+            self._update_or_rollback()
+            self.session.refresh(photo)
+        
+        return photo
+
     def trash_photo(self, photo_id: UUID) -> bool:
         """
         Marca una foto como borrada (Soft Delete).
@@ -193,7 +220,7 @@ class PhotoController(BaseController):
         photo_db.is_deleted = True
         photo_db.deleted_at = func.now() # O datetime.utcnow()
         
-        return self._commit_or_rollback(photo_db)
+        return self._update_or_rollback(photo_db)
 
     def restore_photo(self, photo_id: UUID) -> bool:
         """
@@ -212,7 +239,7 @@ class PhotoController(BaseController):
         photo_db.is_deleted = False
         photo_db.deleted_at = None
         
-        return self._commit_or_rollback(photo_db)
+        return self._update_or_rollback(photo_db)
 
     def get_user_photos(
             self, 
@@ -272,7 +299,7 @@ class PhotoController(BaseController):
         for field, value in photo_update.model_dump(exclude_unset=True).items():
             setattr(photo_db, field, value)
 
-        if not self._commit_or_rollback(photo_db):
+        if not self._update_or_rollback(photo_db):
             return None
 
         self.session.refresh(photo_db)
