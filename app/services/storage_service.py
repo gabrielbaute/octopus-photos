@@ -60,6 +60,9 @@ class StorageService:
             user_path.mkdir(parents=True, exist_ok=True)
             (user_path / "photos").mkdir(exist_ok=True)
             (user_path / "thumbnails").mkdir(exist_ok=True)
+            (user_path / "vault").mkdir(exist_ok=True)
+            (user_path / "vault" / "photos").mkdir(exist_ok=True)
+            (user_path / "vault" / "thumbnails").mkdir(exist_ok=True)
             
             self.logger.info(f"Physical storage created for user {user_id} at {user_path}")
             
@@ -242,6 +245,27 @@ class StorageService:
             size_delta=total_size, # Esto asume un reset previo o un método dedicado
             files_delta=total_count
         )
+
+    def move_to_vault(self, user_id: UUID, file_path: Path) -> bool:
+        """
+        Mueve una foto de la ubicación de foto al baúl de seguridad del usuario
+
+        Args:
+            user_id (UUID): ID del usuario.
+            file_path (Path): Ruta al archivo a mover.
+
+        Returns:
+            bool: True si la operación fue exitosa, False en caso contrario.
+        """
+        vault_path = self.get_user_path(user_id, "vault")
+        try:
+            shutil.move(file_path, vault_path / "photos" / file_path.name)
+            return True
+        except OSError as e:
+            raise StorageError(
+                message="No se pudo mover el archivo a la carpeta de seguridad.",
+                details={"path": str(file_path), "os_error": str(e)}
+            )
 
     # ELIMINACIÓN
     def register_file_deletion(self, user_id: UUID, file_size_bytes: int) -> bool:
