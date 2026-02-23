@@ -4,7 +4,7 @@ Helper to load all the api routes.
 
 from fastapi import FastAPI
 
-from app.api.routes import auth_router, user_router, photos_router, albums_router, check_router
+from app.api.routes import auth_router, user_router, photos_router, vault_router, albums_router, check_router
 
 
 def include_routes(app: FastAPI, prefix: str):
@@ -16,5 +16,6 @@ def include_routes(app: FastAPI, prefix: str):
     app.include_router(auth_router, prefix=prefix)
     app.include_router(user_router, prefix=prefix)
     app.include_router(photos_router, prefix=prefix)
+    app.include_router(vault_router, prefix=prefix)
     app.include_router(albums_router, prefix=prefix)
     app.include_router(check_router, prefix=prefix)

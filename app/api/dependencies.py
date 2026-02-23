@@ -4,7 +4,7 @@ Dependencias para inyectar en la API
 from typing import Optional
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer
-from fastapi import HTTPException, status, Query, Depends
+from fastapi import HTTPException, status, Query, Depends, Header
 
 from app.enums import UserRole
 from app.errors import OctopusError
@@ -14,6 +14,7 @@ from app.mail import SMTPClient, MailBuilder
 from app.schemas import UserResponse, TokenData
 from app.services.mail_service import MailService
 from app.services.users_service import UserService
+from app.services.vault_service import VaultService
 from app.services.photos_service import PhotoService
 from app.services.albums_service import AlbumService
 from app.services.storage_service import StorageService
@@ -93,6 +94,16 @@ def get_memories_service(db: Session = Depends(get_db)) -> MemoriesService:
         MemoriesService: Instancia de MemoriesService.
     """
     return MemoriesService(settings, db)
+
+def get_vault_service(db: Session = Depends(get_db)) -> VaultService:
+    """
+    Provee VaultService.
+
+    Returns:
+        VaultService: Instancia de VaultService.
+    """
+    return VaultService(db)
+
 
 # ============ Dependencias de Seguridad y Usuario ============
 
@@ -183,3 +194,28 @@ def get_current_admin(
             detail="Operación restringida a administradores",
         )
     return current_user
+
+def get_vault_password(
+    vault_password_header: Optional[str] = Header(None, alias="X-Vault-Password"),
+    vault_password_query: Optional[str] = Query(None, alias="vault_password")
+) -> str:
+    """
+    Extrae la contraseña del baúl de los headers o, excepcionalmente, de la query.
+
+    Args:
+        vault_password_header (Optional[str]): Contraseña del baúl extraída del header.
+        vault_password_query (Optional[str]): Contraseña del baúl extraída de la query.
+
+    Returns:
+        str: Contraseña del baúl.
+
+    Raises:
+        HTTPException: Si no se encuentra la contraseña en los headers o query.
+    """
+    password = vault_password_header or vault_password_query
+    if not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Se requiere la contraseña del baúl para acceder a este recurso."
+        )
+    return password
