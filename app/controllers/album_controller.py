@@ -23,6 +23,31 @@ class AlbumController(BaseController):
         super().__init__(session)
         self.logger = logging.getLogger(self.__class__.__name__)
 
+    def _make_response(self, album_db: AlbumDatabaseModel) -> AlbumResponse:
+        """
+        Método privado para centralizar la conversión de Modelo DB a Esquema Pydantic.
+        Resuelve el desajuste entre SQLAlchemy y PhotoResponseList.
+        """
+        # 1. Mapeamos la lista de fotos interna al esquema PhotoResponse
+        # Usamos model_validate porque PhotoResponse sí tiene from_attributes=True
+        photo_list = [PhotoResponse.model_validate(p) for p in album_db.photos]
+        
+        # 2. Construimos el contenedor estandarizado que tu API requiere
+        photos_wrapped = PhotoResponseList(
+            count=len(photo_list),
+            photos=photo_list
+        )
+        
+        # 3. Retornamos el AlbumResponse ensamblado manualmente
+        return AlbumResponse(
+            id=album_db.id,
+            user_id=album_db.user_id,
+            name=album_db.name,
+            description=album_db.description,
+            created_at=album_db.created_at,
+            photos=photos_wrapped
+        )
+
     def create_album(self, new_album_data: AlbumCreate, validated_photo_ids: List[UUID] = None) -> Optional[AlbumResponse]:
         """
         Crea un nuevo álbum para un usuario.
@@ -52,17 +77,7 @@ class AlbumController(BaseController):
             return None
             
         self.session.refresh(new_album)
-        return AlbumResponse(
-                id=new_album.id,
-                user_id=new_album.user_id,
-                name=new_album.name,
-                description=new_album.description,
-                created_at=new_album.created_at,
-                photos=PhotoResponseList(
-                    count=len(new_album.photos),
-                    photos=[PhotoResponse.model_validate(p) for p in new_album.photos]
-                )
-            )
+        return self._make_response(new_album)
 
     def is_album_owner(self, album_id: UUID, user_id: UUID) -> bool:
         """
@@ -90,9 +105,8 @@ class AlbumController(BaseController):
         """
         album_id = self._validate_uudi(album_id)
         album_db = self._get_item_by_id(AlbumDatabaseModel, album_id)
-        if album_db:
-            return AlbumResponse.model_validate(album_db)
-        return None
+        
+        return self._make_response(album_db) if album_db else None
 
     def get_user_albums(self, user_id: UUID) -> AlbumListResponse:
         """
@@ -111,7 +125,10 @@ class AlbumController(BaseController):
             .options(selectinload(AlbumDatabaseModel.photos))
         )
         albums_db = self.session.execute(stmt).scalars().all()
-        return AlbumListResponse(count=len(albums_db), albums=[AlbumResponse.model_validate(a) for a in albums_db])
+        return AlbumListResponse(
+            count=len(albums_db), 
+            albums=[self._make_response(a) for a in albums_db]
+        )
 
     def update_album(self, album_id: UUID, album_update: AlbumUpdate) -> Optional[AlbumResponse]:
         """
@@ -135,7 +152,8 @@ class AlbumController(BaseController):
         if not self._commit_or_rollback(album):
             return None
         self.session.refresh(album)
-        return AlbumResponse.model_validate(album)
+        
+        return self._make_response(album)
 
     def add_photo_to_album(self, photo_id: UUID, album_id: UUID) -> bool:
         """
@@ -249,8 +267,8 @@ class AlbumController(BaseController):
         else:
             self.logger.warning(f"La foto {photo_id} no pertenecía al álbum {album_id}")
 
-        return AlbumResponse.model_validate(photo)
-    
+        return self._make_response(album)
+
     def remove_several_photos_from_album(self, photo_ids: List[UUID], album_id: UUID) -> bool:
         """
         Quita varias fotos de un album en una única transacción
