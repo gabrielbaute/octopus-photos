@@ -12,7 +12,7 @@ from app.errors import OctopusError, ResourceNotFoundError
 from app.database.models.associations import album_photos
 from app.database.models.photos_model import PhotoDatabaseModel
 from app.database.models.albums_model import AlbumDatabaseModel
-from app.schemas import AlbumResponse, AlbumCreate, AlbumListResponse, AlbumUpdate
+from app.schemas import AlbumResponse, AlbumCreate, AlbumListResponse, AlbumUpdate, PhotoResponse, PhotoResponseList
 
 class AlbumController(BaseController):
     """
@@ -52,7 +52,17 @@ class AlbumController(BaseController):
             return None
             
         self.session.refresh(new_album)
-        return AlbumResponse.model_validate(new_album)
+        return AlbumResponse(
+                id=new_album.id,
+                user_id=new_album.user_id,
+                name=new_album.name,
+                description=new_album.description,
+                created_at=new_album.created_at,
+                photos=PhotoResponseList(
+                    count=len(new_album.photos),
+                    photos=[PhotoResponse.model_validate(p) for p in new_album.photos]
+                )
+            )
 
     def is_album_owner(self, album_id: UUID, user_id: UUID) -> bool:
         """
