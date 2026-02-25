@@ -23,7 +23,6 @@ router = APIRouter(prefix="/albums", tags=["Albums"])
 @router.post("/", response_model=AlbumResponse, status_code=status.HTTP_201_CREATED)
 async def create_album(
     album_create: AlbumCreate,
-    current_user: UserResponse = Depends(get_current_user),
     album_service: AlbumService = Depends(get_albums_service)
 ):
     """Crea un nuevo álbum y opcionalmente le asigna fotos iniciales."""
