@@ -246,7 +246,7 @@ class PhotoController(BaseController):
             user_id: UUID, 
             skip: int = 0, 
             limit: int = 100, 
-            include_deleted: bool = False
+            only_deleted: bool = False
         ) -> PhotoResponseList:
         """
         Obtiene la lista de fotos de un usuario con paginación.
@@ -261,14 +261,25 @@ class PhotoController(BaseController):
             PhotoResponseList: Objeto con la lista de fotos y el total.
         """
         user_id = self._validate_uudi(user_id)
-        
-        # Definimos la base de la condición para reutilizarla en el count
+        # Filtro base por usuario
         filters = [PhotoDatabaseModel.user_id == user_id]
-        if not include_deleted:
+
+        # Lógica de estados excluyentes
+        if only_deleted:
+            # Estado Papelera: is_deleted == True
+            filters.append(PhotoDatabaseModel.is_deleted == True)
+        else:
+            # Estado Timeline: is_deleted == False
             filters.append(PhotoDatabaseModel.is_deleted == False)
 
         # 1. Consulta paginada
-        stmt = select(PhotoDatabaseModel).where(*filters).offset(skip).limit(limit)
+        stmt = (
+            select(PhotoDatabaseModel)
+            .where(*filters)
+            .order_by(PhotoDatabaseModel.date_taken.desc()) # <--- Añade esto
+            .offset(skip)
+            .limit(limit)
+        )
         photos_db = self.session.execute(stmt).scalars().all()
         
         # 2. Conteo coherente con los filtros aplicados

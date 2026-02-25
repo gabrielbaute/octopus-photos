@@ -63,7 +63,7 @@ async def upload_photo(
 async def get_my_photos(
     skip: int = 0,
     limit: int = 100,
-    include_deleted: bool = False, # Nuevo parámetro para ver la papelera
+    only_deleted: bool = False, # Nuevo parámetro para ver la papelera
     current_user: UserResponse = Depends(get_current_user),
     photo_service: PhotoService = Depends(get_photos_service)
 ):
@@ -72,7 +72,7 @@ async def get_my_photos(
         current_user.id, 
         skip=skip, 
         limit=limit, 
-        include_deleted=include_deleted
+        only_deleted=only_deleted
     )
 
 @router.get("/memories", response_model=PhotosYearList)

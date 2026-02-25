@@ -175,7 +175,7 @@ class PhotoService:
         self._validate_ownership([photo_id], requester_id)
         return self.photo_controller.get_by_id(photo_id)
     
-    def get_user_photos(self, user_id: UUID, skip: int = 0, limit: int = 100, include_deleted: bool = False) -> PhotoResponseList:
+    def get_user_photos(self, user_id: UUID, skip: int = 0, limit: int = 100, only_deleted: bool = False) -> PhotoResponseList:
         """
         Recupera la lista de fotos de un usuario con paginación.
 
@@ -183,12 +183,12 @@ class PhotoService:
             user_id (UUID): ID del propietario.
             skip (int): Desplazamiento.
             limit (int): Tamaño de página.
-            include_deleted (bool): Flag para determinar si se incluyen fotos borradas o no
+            only_deleted (bool): Flag para determinar si filtramos por fotos borradas o no.
 
         Returns:
             PhotoResponseList: Objeto con la lista de fotos y el total.
         """
-        return self.photo_controller.get_user_photos(user_id, skip, limit, include_deleted)
+        return self.photo_controller.get_user_photos(user_id, skip, limit, only_deleted)
     
     # =========== MÉTODOS PUT ===========
     def update_photo_metadata(self, photo_id: UUID, photo_update: PhotoUpdate, requester_id: UUID) -> Optional[PhotoResponse]:
