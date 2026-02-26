@@ -14,3 +14,8 @@ wheels/
 
 # Tests
 .pytest_cache/
+
+# builds y dist
+build/
+dist/
+*.spec
