@@ -89,7 +89,7 @@ def load_settings() -> Settings:
         instance = Settings()
         instance.ensure_dirs()
         return instance
-    except ValidationError as e:
+    except ConfigurationError as e:
         missing_vars = [str(err["loc"][0]) for err in e.errors() if err["type"] == "missing"]
         
         message = (
