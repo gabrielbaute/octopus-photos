@@ -28,7 +28,7 @@ def run_server():
     Run the FastAPI server.
     """
     uvicorn.run(
-        "main:app",
+        app=app,
         host=settings.API_HOST,
         port=settings.API_PORT,
         log_level=settings.API_LOG_LEVEL,
