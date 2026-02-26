@@ -27,6 +27,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "bumpver>=2025.1131",
+    "pyinstaller>=6.19.0",
+    "pystray>=0.19.5",
     "pytest>=9.0.2",
     "pytest-mock>=3.15.1",
 ]
