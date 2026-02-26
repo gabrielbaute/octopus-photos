@@ -17,9 +17,7 @@ from app.database.models import (
 
 logger = logging.getLogger("DatabaseSettings")
 
-logger.info("Creando engine...")
 engine = create_engine(settings.DATABASE_URL, connect_args=settings.DATABASE_CONNECT_ARGS)
-logger.info("Generando SessionLocal...")
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db(settings: Settings) -> None:
@@ -35,6 +33,6 @@ def init_db(settings: Settings) -> None:
     settings.INSTANCE_PATH.mkdir(parents=True, exist_ok=True)    
     try:
         Base.metadata.create_all(bind=engine)
-        logger.info(f"Base de datos inicializada en: {settings.DATABASE_URL}")
+        logger.debug(f"Base de datos inicializada en: {settings.DATABASE_URL}")
     except Exception as e:
         logger.error(f"Error al inicializar la base de datos: {e}")

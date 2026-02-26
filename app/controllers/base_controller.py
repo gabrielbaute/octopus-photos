@@ -31,7 +31,7 @@ class BaseController:
         try:
             self.session.add(record)
             self.session.commit()
-            self.logger.info(f"Successfully committed: {record}")
+            self.logger.debug(f"Successfully committed: {record}")
             return True
         except SQLAlchemyError as e:
             self.session.rollback()
@@ -93,7 +93,7 @@ class BaseController:
             # session.get es la forma preferida para búsquedas por PK en SQLAlchemy 2.0
             item = self.session.get(model, item_id)
             if item:
-                self.logger.info(f"Successfully retrieved {model.__tablename__} ID: {item_id}")
+                self.logger.debug(f"Successfully retrieved {model.__tablename__} ID: {item_id}")
                 return item
             
             self.logger.warning(f"{model.__tablename__} with ID {item_id} not found.")
