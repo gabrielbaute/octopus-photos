@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     # Directorios
     BASE_PATH: Path = Path.home() / f".{APP_NAME}"
     UI_PATH: Path = Path(__file__).parent.parent / "ui"
+    STATIC_PATH: Path = UI_PATH / "static"
     DATA_PATH: Path = BASE_PATH / "data"
     LOGS_PATH: Path = DATA_PATH / "logs"
     CONFIG_PATH: Path = BASE_PATH / "config"
