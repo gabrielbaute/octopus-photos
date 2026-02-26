@@ -3,9 +3,9 @@
 Octopus Photos es una solución de almacenamiento y gestión de fotografías **self-hosted**, diseñada bajo principios de soberanía de datos, código abierto y optimización de recursos. Que puedas correrlo incluso en una canaimita.
 
 ## Capturas
-<img src="assets/login.jpeg" alt="Página de login" width="33%">  <img src="assets/timeline.jpeg" alt="Timeline, página principal" width="33%">
+<img src="assets/login.jpeg" alt="Página de login" width="45%">  <img src="assets/timeline.jpeg" alt="Timeline, página principal" width="45%">
 
-<img src="assets/modal_view.jpeg" alt="Vista de detalle de imagen" width="33%">  <img src="assets/profile.jpeg" alt="Perfil de usuario" width="33%">
+<img src="assets/modal_view.jpeg" alt="Vista de detalle de imagen" width="45%">  <img src="assets/profile.jpeg" alt="Perfil de usuario" width="45%">
 
 ## ¿De dónde sale OctopusPhotos?
 OctopusPhotos es un proyecto self-hosted para almacenar tus fotos. Ustedes dirán: ¿Pero como que otro más? Si aquí ya tienes una lista enorme: https://meichthys.github.io/foss_photo_libraries/ Y tienen razón. Pero como todo en esta vida, cuando buscas entre las opciones resulta que no tienen algo que quieres o, si lo tienen, no está a tu alcance. Eso fue lo que me pasó a mi.
