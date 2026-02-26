@@ -2,10 +2,10 @@
 FastAPI Application Factory module
 """
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles #Para archivos estáticos en un futuro, aunque el frontend irá en flutter
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.settings import Settings
+from app.api.web_client import setup_web_client
 from app.api.include_routes import include_routes
 
 def create_app(settings: Settings) -> FastAPI:
@@ -35,6 +35,10 @@ def create_app(settings: Settings) -> FastAPI:
         allow_credentials=True,
     )
 
+    # Inicializamos los routers de la API
     include_routes(app, prefix="/api/v1")
+
+    # Servimos el cliente web
+    setup_web_client(app, settings)
 
     return app
