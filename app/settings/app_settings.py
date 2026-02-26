@@ -3,6 +3,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.settings.version import __version__
+from app.settings.bootstrap import bootstrap_config
 from app.utils.get_environment_path import get_env_paths
 from app.errors.config_errors import ConfigurationError
 
@@ -10,21 +11,17 @@ class Settings(BaseSettings):
     # Datos base
     APP_NAME: str = "OctopusPhotos"
     APP_VERSION: str = __version__
-    APP_URL: str = "http://localhost:8000"
     TIMEZONE: str = "America/Caracas"
 
-    # Directorios
+    # ------------ Directorios ------------ 
     BASE_PATH: Path = Path.home() / f".{APP_NAME}"
-    UI_PATH: Path = Path(__file__).parent.parent / "ui"
-    STATIC_PATH: Path = UI_PATH / "static"
     DATA_PATH: Path = BASE_PATH / "data"
     LOGS_PATH: Path = DATA_PATH / "logs"
     CONFIG_PATH: Path = BASE_PATH / "config"
     TMP_PATH: Path = DATA_PATH / "tmp"
     STORAGE_BASE_PATH: Path = DATA_PATH / "storage"
-
-    # Database
     INSTANCE_PATH: Path = BASE_PATH / "instance"
+
     @property
     def DATABASE_URL(self) -> str:
         db_path = self.INSTANCE_PATH / f"{self.APP_NAME}.db"
@@ -32,6 +29,24 @@ class Settings(BaseSettings):
         # sqlite://// para absoluto
         return f"sqlite:///{db_path.absolute()}"
     
+    @property
+    def UI_PATH(self) -> Path:
+        """Determina la ruta de la UI según el entorno (Dev vs Exe)."""
+        if getattr(sys, 'frozen', False):
+            # Ruta interna temporal de PyInstaller
+            return Path(sys._MEIPASS) / "app" / "ui"
+        # Ruta de desarrollo
+        return Path(__file__).parent.parent / "ui"
+
+    @property
+    def STATIC_PATH(self) -> Path:
+        return self.UI_PATH / "static"
+    
+    @property
+    def MAIL_TEMPLATES_DIR(self) -> Path:
+        return self.UI_PATH / "emails"
+
+    # ------------  Base de datos ------------ 
     DATABASE_ECHO: bool = False
     DATABASE_CONNECT_ARGS: dict = {}
     DATABASE_POOL_SIZE: int = 10
@@ -39,13 +54,14 @@ class Settings(BaseSettings):
     DATABASE_POOL_TIMEOUT: int = 30
     DATABASE_POOL_PRE_PING: bool = True
 
-    # API
+    # ------------ API ------------ 
     API_HOST: str = "127.0.0.1"
-    API_PORT: int = 8000
-    API_RELOAD: bool = True
+    API_PORT: int = 8082
+    API_RELOAD: bool = False
     API_LOG_LEVEL: str = "info"
+    APP_URL: str = f"http://{API_HOST}:{API_PORT}"
 
-    # Encriptado
+    # ------------ Encriptado ------------ 
     SECRET_KEY: str = ""
     SECURITY_PASSWORD_SALT: str  = ""
     JWT_SECRET_KEY: str  = ""
@@ -53,14 +69,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 10080 # 7 días
 
-    # Mail
+    # ------------ Mail ------------ 
     MAIL_HOST: str = "smtp.google.com"
     MAIL_PORT: int = 587
     MAIL_USERNAME: str = "yourmail@gmail.com"
     MAIL_PASSWORD: str = "your-email-password"
     MAIL_USE_TLS: bool = True
     MAIL_USE_SSL: bool = False
-    MAIL_TEMPLATES_DIR: Path = UI_PATH / "emails"
 
     model_config = SettingsConfigDict(
         env_file=get_env_paths(), 
@@ -89,6 +104,7 @@ def load_settings() -> Settings:
     presentar mensajes amigables al usuario.
     """
     try:
+        bootstrap_config()
         instance = Settings()
         instance.ensure_dirs()
         return instance
