@@ -64,7 +64,7 @@ Al iniciar, el sistema creará automáticamente la siguiente estructura en tu di
 
 Puedes construir la aplicación try y su .exe ejecutando lo siguiente:
 ```bash
-pyinstaller --noconfirm --onefile --windowed --name "OctopusPhotos" --add-data "app/ui;app/ui" --hidden-import "pystray._win32" --hidden-import "passlib.handlers.bcrypt" --hidden-import "bcrypt" --hidden-import "uvicorn.logging" --hidden-import "uvicorn.protocols.http.httptools_impl" --hidden-import "uvicorn.optimizers" --hidden-import "uvicorn.protocols.http.h11_impl" try_app.py
+pyinstaller --noconfirm --onefile --windowed --name "OctopusPhotosTry" --add-data "app/ui;app/ui" --hidden-import "pystray._win32" --hidden-import "passlib.handlers.bcrypt" --hidden-import "bcrypt" --hidden-import "uvicorn.logging" --hidden-import "uvicorn.protocols.http.h11_impl" try_app.py
 ```
 
 Debes haber tenido instaladas las dependencias de desarrollo. Si hay algún problema, cambia el flag `--windowed` por `--console` para poder visualizar los logs y determinar qué puede estar pasando.
