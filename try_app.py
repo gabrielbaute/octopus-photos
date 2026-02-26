@@ -3,7 +3,6 @@ import uvicorn
 import threading
 import webbrowser
 from PIL import Image
-from typing import Optional
 from pystray import Icon, Menu, MenuItem
 
 from app.api.app_factory import create_app

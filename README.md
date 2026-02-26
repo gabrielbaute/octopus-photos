@@ -60,6 +60,15 @@ Al iniciar, el sistema creará automáticamente la siguiente estructura en tu di
 * `~/.OctopusPhotos/instance` (Base de Datos SQLite)
 * `~/.OctopusPhotos/data/logs` (Registros del sistema)
 
+### 5. Construir el .exe por ti mismo
+
+Puedes construir la aplicación try y su .exe ejecutando lo siguiente:
+```bash
+pyinstaller --noconfirm --onefile --windowed --name "OctopusPhotos" --add-data "app/ui;app/ui" --hidden-import "pystray._win32" --hidden-import "passlib.handlers.bcrypt" --hidden-import "bcrypt" --hidden-import "uvicorn.logging" --hidden-import "uvicorn.protocols.http.httptools_impl" --hidden-import "uvicorn.optimizers" --hidden-import "uvicorn.protocols.http.h11_impl" try_app.py
+```
+
+Debes haber tenido instaladas las dependencias de desarrollo. Si hay algún problema, cambia el flag `--windowed` por `--console` para poder visualizar los logs y determinar qué puede estar pasando.
+
 ## Roadmap
 ¿Qué sigue? Pues hay varias cosas que aún me faltan tanto en el back como en el front, así que he aquí una lista de funciones a desarrollar en ambos flancos:
 - **App de android**: tenemos una base en el frontend web, al ser flutter podemos reutilizar muchos de sus bloques, pero hay mucha lógica de negocio adicional que agregar allí como sicncronización con el servidor, un sistema de respaldo, eliminar fotos del celular que ya hayan sido respaldadas, etc… digamos que todo eso está en 0
@@ -77,7 +86,6 @@ Al iniciar, el sistema creará automáticamente la siguiente estructura en tu di
 - **Detección de rostros**: aún no sé si hacer esto o no, en teoría con unos binarios optimizados podría ejecutarse en una PC de pocos recursos, ya que no es una tarea que se ejecute a cada momento, sino que podrían programarse escaneos periódicos y que se guarden los vectores en la BDD, o en un directorio alternativo que almacene los binarios generados (olvidaba que SQLite no maneja bien el tema de los binarios y tampoco queremos que crezca demasiado, ya veremos, hay que decisiones técnicas que tomar alli)
 
 De momento no se me ocurre nada más a decir verdad… pero si alguien piensa en algo, no dude en comentarlo!
-
 
 ## 📝 Licencia
 
