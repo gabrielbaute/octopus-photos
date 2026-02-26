@@ -6,7 +6,6 @@ from app.settings.version import __version__
 from app.utils.get_environment_path import get_env_paths
 from app.errors.config_errors import ConfigurationError
 
-
 class Settings(BaseSettings):
     # Datos base
     APP_NAME: str = "OctopusPhotos"
@@ -47,17 +46,17 @@ class Settings(BaseSettings):
     API_LOG_LEVEL: str = "info"
 
     # Encriptado
-    SECRET_KEY: str
-    SECURITY_PASSWORD_SALT: str
-    JWT_SECRET_KEY: str
+    SECRET_KEY: str = ""
+    SECURITY_PASSWORD_SALT: str  = ""
+    JWT_SECRET_KEY: str  = ""
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int
-    REFRESH_TOKEN_EXPIRE_MINUTES: int
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 10080 # 7 días
 
     # Mail
     MAIL_HOST: str = "smtp.google.com"
     MAIL_PORT: int = 587
-    MAIL_USERNAME: str = "gabrielbaute@gmail.com"
+    MAIL_USERNAME: str = "yourmail@gmail.com"
     MAIL_PASSWORD: str = "your-email-password"
     MAIL_USE_TLS: bool = True
     MAIL_USE_SSL: bool = False
