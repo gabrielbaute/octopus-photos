@@ -1,9 +1,9 @@
 import sys
 from pathlib import Path
-from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.settings.version import __version__
+from app.utils.get_environment_path import get_env_paths
 from app.errors.config_errors import ConfigurationError
 
 
@@ -63,7 +63,11 @@ class Settings(BaseSettings):
     MAIL_USE_SSL: bool = False
     MAIL_TEMPLATES_DIR: Path = UI_PATH / "emails"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=get_env_paths(), 
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
     def ensure_dirs(self) -> None:
             """Crea la estructura de directorios necesaria para self-hosting."""
