@@ -4,8 +4,10 @@ Módulo de seguridad y autenticación de usuarios.
 from typing import Optional
 from jose import jwt, JWTError
 from passlib.context import CryptContext
+from passlib.handlers import bcrypt
 from fastapi import HTTPException, status
 from datetime import datetime, timedelta, timezone
+
 
 from app.settings import settings
 from app.schemas import TokenData, Token
