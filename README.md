@@ -69,7 +69,17 @@ Al iniciar, el sistema creará automáticamente la siguiente estructura en tu di
 
 Puedes construir la aplicación try y su .exe ejecutando lo siguiente:
 ```bash
-pyinstaller --noconfirm --onefile --windowed --name "OctopusPhotosTry" --add-data "app/ui;app/ui" --hidden-import "pystray._win32" --hidden-import "passlib.handlers.bcrypt" --hidden-import "bcrypt" --hidden-import "uvicorn.logging" --hidden-import "uvicorn.protocols.http.h11_impl" try_app.py
+pyinstaller --noconfirm --onefile --windowed --name "OctopusPhotosTry" \
+--add-data "app/ui;app/ui" \
+--collect-all "PIL" \
+--collect-all "pydantic_core" \
+--collect-all "pydantic" \
+--hidden-import "pystray._win32" \
+--hidden-import "passlib.handlers.bcrypt" \
+--hidden-import "bcrypt" \
+--hidden-import "uvicorn.logging" \
+--hidden-import "uvicorn.protocols.http.h11_impl" \
+try_app.py
 ```
 
 Debes haber tenido instaladas las dependencias de desarrollo. Si hay algún problema, cambia el flag `--windowed` por `--console` para poder visualizar los logs y determinar qué puede estar pasando.
@@ -86,7 +96,7 @@ Debes haber tenido instaladas las dependencias de desarrollo. Si hay algún prob
 - **Migración**: no tengo implementado un servicio de migración aún, por lo que cualquier upgrade que actualice la base de datos puede potencialmente causar pérdida de información. Este es un punto CRÍTICO a solventar.
 - **Búsqueda**: aún no he pensado cómo habilitar que se hagan queries sobre el server, pero es una función que ayudaría, ya que hay la opción de agregar tags a las fotos, razón por la cual se puede realizar búsqueda a partir de términos en los tags.
 - **Docker**: aún no he preparado ni testeado una Dockerfile ni un compose. Es un punto importante.
-- **Instalador de Windows**: estoy pensando en una versión para windows, que no use docker (que la mayoría de la gente que conozco que usaría esto no sabe que es el WSL2 o no disponen de equipos con capacidad de soportar WSL2), así que he pensado en una forma de usar un instalador (pyinstaller) que cree una versión portable que ejecute el servidor en segundo plano.
+- ✅ **Instalador de Windows**: estoy pensando en una versión para windows, que no use docker (que la mayoría de la gente que conozco que usaría esto no sabe que es el WSL2 o no disponen de equipos con capacidad de soportar WSL2), así que he pensado en una forma de usar un instalador (pyinstaller) que cree una versión portable que ejecute el servidor en segundo plano.
 - **Manejo de duplicados**: aún no estoy seguro de cómo manejar esto, pero es un punto que hay que trabajar, una forma de escanear para que el usuario detecte fotos duplicadas que haya subido por error y que decida qué hacer o como solventar el tema.
 - **Detección de rostros**: aún no sé si hacer esto o no, en teoría con unos binarios optimizados podría ejecutarse en una PC de pocos recursos, ya que no es una tarea que se ejecute a cada momento, sino que podrían programarse escaneos periódicos y que se guarden los vectores en la BDD, o en un directorio alternativo que almacene los binarios generados (olvidaba que SQLite no maneja bien el tema de los binarios y tampoco queremos que crezca demasiado, ya veremos, hay que decisiones técnicas que tomar alli)
 
