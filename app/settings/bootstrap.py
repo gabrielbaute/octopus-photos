@@ -1,6 +1,10 @@
 import sys
 import secrets
+import logging
 from app.utils.get_environment_path import get_env_paths
+
+logger = logging.getLogger("Bootstrap")
+
 
 def bootstrap_config() -> None:
     """
@@ -41,11 +45,19 @@ ALGORITHM=HS256
 # Tiempos de expiración
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 REFRESH_TOKEN_EXPIRE_MINUTES=10080
+
+# Configuración d correo (coloca tus credenciales)
+MAIL_HOST=smtp.google.com
+MAIL_PORT=587
+MAIL_USERNAME=yourmail@gmail.com
+MAIL_PASSWORD=your-app-specific-password
+MAIL_USE_TLS=True
+MAIL_USE_SSL=False
 """
     
     try:
         user_env.write_text(default_env_content, encoding="utf-8")
-        print("--- Configuración inicial creada con éxito ---")
+        logger.info("--- Configuración inicial creada con éxito ---")
     except Exception as e:
         print(f"Error crítico al escribir la configuración: {e}")
         sys.exit(1)
