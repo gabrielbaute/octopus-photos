@@ -1,10 +1,12 @@
 import os
 import sys
+import PIL
 import uvicorn
 import logging
 import threading
 import webbrowser
-from PIL import Image
+import subprocess
+from PIL import _imaging, Image
 from pystray import Icon, Menu, MenuItem
 
 from app.api.app_factory import create_app
@@ -53,13 +55,24 @@ class OctopusTrayApp:
         env_path = get_env_paths()[0] # La del usuario
         if env_path.exists():
             os.startfile(env_path)
+    
+    def _open_project_folder(self) -> None:
+        """Abre la carpeta BASE_PATH en el explorador de archivos."""
+        if settings.BASE_PATH.exists():
+            os.startfile(settings.BASE_PATH)
 
     def _restart_app(self) -> None:
         """Reinicia la aplicación completa."""
         if self.icon:
             self.icon.stop()
-        # Reinicia el proceso actual
-        os.execl(sys.executable, sys.executable, *sys.argv)
+        
+        # Obtenemos la ruta del ejecutable actual      
+        # En Windows, a veces es mejor usar subprocess para soltar el handle
+        # antes de que el nuevo proceso intente bloquear archivos de nuevo
+        subprocess.Popen([sys.executable] + sys.argv)
+        
+        # Salida inmediata del proceso actual
+        os._exit(0)
 
     def _quit_app(self) -> None:
         if self.icon:
@@ -68,7 +81,7 @@ class OctopusTrayApp:
 
     def _open_browser(self) -> None:
         """Abre la interfaz de usuario en el navegador."""
-        webbrowser.open(f"http://localhost:{settings.API_PORT}", default=True)
+        webbrowser.open(f"http://localhost:{settings.API_PORT}")
 
     def _quit_app(self) -> None:
         """Detiene el icono y cierra la aplicación."""
@@ -85,6 +98,8 @@ class OctopusTrayApp:
         
         menu = Menu(
             MenuItem("Abrir Octopus Photos", lambda: webbrowser.open(f"http://localhost:{settings.API_PORT}"), default=True),
+            MenuItem("Abrir Carpeta del Proyecto", self._open_project_folder),
+            Menu.SEPARATOR,
             MenuItem("Editar Configuración (.env)", self._open_config),
             MenuItem("Ver Logs", self._open_logs),
             Menu.SEPARATOR,
